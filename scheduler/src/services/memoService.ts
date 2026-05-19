@@ -64,6 +64,7 @@ export class LocalStorageMemoService implements IMemoService {
     const memos = this.getRawMemos();
     const newMemo: Memo = {
       id: crypto.randomUUID(),
+      userId: input.userId,
       title: input.title,
       content: input.content,
       color: input.color,
@@ -105,6 +106,7 @@ export class SupabaseMemoService implements IMemoService {
     if (error) throw new Error(error.message);
     return (data || []).map((item: any) => ({
       id: item.id,
+      userId: item.userId,
       title: item.title,
       content: item.content || '',
       color: item.color || '#2b2d42',
@@ -118,6 +120,7 @@ export class SupabaseMemoService implements IMemoService {
       .insert([
         {
           id: crypto.randomUUID(), // 클라이언트 사이드 자율 할당으로 Not Null 완벽 수호
+          userId: input.userId,
           title: input.title,
           content: input.content,
           color: input.color
@@ -129,6 +132,7 @@ export class SupabaseMemoService implements IMemoService {
     if (error) throw new Error(error.message);
     return {
       id: data.id,
+      userId: data.userId,
       title: data.title,
       content: data.content || '',
       color: data.color || '#2b2d42',
@@ -147,6 +151,7 @@ export class SupabaseMemoService implements IMemoService {
     if (error) throw new Error(error.message);
     return {
       id: data.id,
+      userId: data.userId,
       title: data.title,
       content: data.content || '',
       color: data.color || '#2b2d42',

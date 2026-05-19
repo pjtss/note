@@ -76,6 +76,7 @@ export class LocalStorageScheduleService implements IScheduleService {
     const schedules = this.getRawSchedules();
     const newSchedule: Schedule = {
       id: crypto.randomUUID(),
+      userId: input.userId,
       title: input.title,
       description: input.description,
       startTime: input.startTime,
@@ -120,6 +121,7 @@ export class SupabaseScheduleService implements IScheduleService {
     if (error) throw new Error(error.message);
     return (data || []).map((item: any) => ({
       id: item.id,
+      userId: item.userId,
       title: item.title,
       description: item.description || '',
       startTime: item.startTime,
@@ -136,6 +138,7 @@ export class SupabaseScheduleService implements IScheduleService {
       .insert([
         {
           id: crypto.randomUUID(),
+          userId: input.userId,
           title: input.title,
           description: input.description,
           startTime: input.startTime,
@@ -150,6 +153,7 @@ export class SupabaseScheduleService implements IScheduleService {
     if (error) throw new Error(error.message);
     return {
       id: data.id,
+      userId: data.userId,
       title: data.title,
       description: data.description || '',
       startTime: data.startTime,
@@ -171,6 +175,7 @@ export class SupabaseScheduleService implements IScheduleService {
     if (error) throw new Error(error.message);
     return {
       id: data.id,
+      userId: data.userId,
       title: data.title,
       description: data.description || '',
       startTime: data.startTime,
