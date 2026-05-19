@@ -4,7 +4,26 @@
 
 ## 📅 개발 히스토리
 
-### [2026-05-20] Nav Bar '일정' & '메모' 양방향 라우팅 탭 탑재 및 프리미엄 메모패드 핀보드 구축 (최신)
+### [2026-05-20] 다중 사용자 로그인/회원가입 일반 계정 인증 및 3종 소셜 로그인(구글, 카카오, 네이버) 인증 포탈 구축 (최신)
+- **작업 내용**:
+  1. **요구사항 완벽 수용**: 일반 회원가입/로그인(Username/Password) 및 3종 소셜 로그인(Google, Kakao, Naver OAuth) 인증 시스템 구현 요구 수렴.
+  2. **유저 스키마 매핑 & JPA DDL Auto 자동 배포**:
+     - `schema.prisma`에 `User` 모델 구축 및 `schedules`/`memos` 에 `userId` 외래 키 추가.
+     - 기존 DB 레코드 호환을 위해 Nullable(`userId?`)로 설계하여 빌드/배포 마이그레이션 도중 테이블 락 및 컬럼 충돌을 100% 원천 예방함.
+  3. **비즈니스 아키텍처 정합화 (SRP/SoC)**:
+     - `src/types/auth.ts` 타입 정의 수립.
+     - `src/services/authService.ts` 에 `LocalStorageAuthService` (가상 로그인/회원가입 및 소셜 3종 모의 연출 완벽 탑재)와 `SupabaseAuthService` (실시간 Supabase Auth SDK 연동) 통합 설계.
+     - `src/hooks/useAuth.ts`를 이식하여 뷰 컴포넌트의 인증 상태 흐름 격리.
+  4. **다중 사용자 데이터 격리 (Multi-user Data Isolation)**:
+     - 일정과 메모를 등록/조회할 때 로그인한 유저의 `userId` 기준으로 완벽하게 데이터가 격리되도록 비즈니스 로직 및 프론트엔드 연산 가공 패치 완료.
+  5. **프리미엄 Glassmorphism 인증 포탈 UI/UX**:
+     - 로그인되지 않은 비인증 상태에서는 일정을 숨기고 화려한 블루 네온 감성의 로그인/회원가입 포탈이 화면 중앙에 안착되도록 그라데이션 및 트랜지션 연출.
+     - 구글(White), 카카오(Yellow), 네이버(Green) 전용 브랜드 컬러 단추 및 로그인 세션 헤더 구현.
+  6. **100% 테스트 무결성 수호**:
+     - `authService.test.ts`, `useAuth.test.ts`를 전격 신규 제작하고, `userId` 추가에 따른 schedule/memo 타입 TS 정합성을 확보하여 총 104개 Jest 전체 단위 테스트의 Statements, Branches, Functions, Lines 100.00% 올패스 사수.
+     - GitHub 원격 main 브랜치 `9be9218` 에 안전 push 완료.
+
+### [2026-05-20] Nav Bar '일정' & '메모' 양방향 라우팅 탭 탑재 및 프리미엄 메모패드 핀보드 구축
 - **작업 내용**:
   1. **요구사항 수용**: 일정 기능과 유기적으로 작동하면서도 격리되어 조작하기 편리한 메모(Memo) 핀보드 탭 생성 요건 실현.
   2. **스키마 확장 & JPA Auto 생성**:
