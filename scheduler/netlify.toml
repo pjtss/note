@@ -1,0 +1,9 @@
+# Netlify Deployment Configuration for Next.js
+# This file configures the build settings and plugins for deploying the scheduler to Netlify.
+
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+# Netlify's Next.js Essential Runtime is automatically installed for Next.js sites, 
+# but defining the build commands explicitly ensures correct build compilation.

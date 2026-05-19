@@ -1,0 +1,7 @@
+# Netlify Configuration for Sub-directory Setup
+# This file in the root tells Netlify to build the Next.js app located inside the "scheduler" directory.
+
+[build]
+  base = "scheduler"
+  command = "npm run build"
+  publish = ".next"
