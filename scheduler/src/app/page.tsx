@@ -71,7 +71,7 @@ export default function Home() {
   // 메모 입력 폼 상태
   const [memoTitle, setMemoTitle] = useState('');
   const [memoContent, setMemoContent] = useState('');
-  const [memoColor, setMemoColor] = useState('#ffd166'); // 기본 파스텔 노랑
+  const [memoColor, setMemoColor] = useState('#fffbeb'); // 기본 파스텔 코지옐로우
   const [editingMemoId, setEditingMemoId] = useState<string | null>(null);
   
   // 메모 검색 및 필터 상태
@@ -82,14 +82,17 @@ export default function Home() {
   // Supabase 가이드 배너 토글
   const [showGuide, setShowGuide] = useState(false);
 
-  // 파스텔 색상 스펙트럼 정의
+  // 프리미엄 파스텔 & 세련된 오션 마린 테마 색상 정의 (하늘, 푸른, 바다색 계열 대폭 강화)
   const pastelColors = [
-    { name: '노랑', hex: '#ffd166' },
-    { name: '연녹', hex: '#06d6a0' },
-    { name: '하늘', hex: '#118ab2' },
-    { name: '연보라', hex: '#bdb2ff' },
-    { name: '분홍', hex: '#ffc6ff' },
-    { name: '다크네이비', hex: '#2b2d42' }
+    { name: '밀크바닐라', hex: '#fffbeb' },    // 감성 코지 옐로우 (라이트)
+    { name: '스카이블루', hex: '#e0f2fe' },    // 화사한 아침 하늘색 (라이트)
+    { name: '소다레인', hex: '#bde0fe' },      // 청량한 청하늘색 (라이트)
+    { name: '산호바다', hex: '#a8dadc' },      // 세련된 민트 바다색 (라이트)
+    { name: '오션블루', hex: '#4ea8de' },      // 영롱한 몰디브 바다색 (라이트)
+    { name: '딥블루', hex: '#0077b6' },        // 깊은 지중해 푸른색 (다크)
+    { name: '마린네이비', hex: '#1d3557' },    // 세련된 크루즈 네이비색 (다크)
+    { name: '연라벤더', hex: '#e8e8ff' },      // 은은한 안개 보라색 (라이트)
+    { name: '체리블러썸', hex: '#ffe5ec' }     // 부드러운 분홍빛 (라이트)
   ];
 
   useEffect(() => {
@@ -995,14 +998,14 @@ export default function Home() {
                     ) : (
                       <div className="row g-3" style={{ minHeight: '300px' }}>
                         {filteredMemos.map((memo) => {
-                          const isDarkColor = memo.color === '#2b2d42' || memo.color === '#118ab2';
+                          const isDarkColor = memo.color === '#0077b6' || memo.color === '#1d3557' || memo.color === '#2b2d42' || memo.color === '#118ab2';
                           return (
                             <div key={memo.id} className="col-md-6 col-xl-6">
                               <div
                                 onClick={() => setSelectedMemo(memo)}
                                 className="card border-0 p-4 h-100 rounded-4 transition-all position-relative shadow-sm hover-up"
                                 style={{
-                                  backgroundColor: memo.color || '#ffd166',
+                                  backgroundColor: memo.color || '#fffbeb',
                                   color: isDarkColor ? '#ffffff' : '#2b2d42',
                                   boxShadow: '0 8px 24px rgba(0, 0, 0, 0.05)',
                                   transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
@@ -1118,10 +1121,10 @@ export default function Home() {
             className="premium-card p-4 w-100 rounded-4 border-0 shadow-lg position-relative scale-in"
             style={{
               maxWidth: '650px',
-              backgroundColor: selectedMemo.color || '#ffd166',
-              color: (selectedMemo.color === '#2b2d42' || selectedMemo.color === '#118ab2') ? '#ffffff' : '#2b2d42',
+              backgroundColor: selectedMemo.color || '#fffbeb',
+              color: (selectedMemo.color === '#0077b6' || selectedMemo.color === '#1d3557' || selectedMemo.color === '#2b2d42' || selectedMemo.color === '#118ab2') ? '#ffffff' : '#2b2d42',
               boxShadow: '0 25px 60px rgba(0, 0, 0, 0.45)',
-              borderTop: `6px solid ${(selectedMemo.color === '#2b2d42' || selectedMemo.color === '#118ab2') ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.2)'}`
+              borderTop: `6px solid ${(selectedMemo.color === '#0077b6' || selectedMemo.color === '#1d3557' || selectedMemo.color === '#2b2d42' || selectedMemo.color === '#118ab2') ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.2)'}`
             }}
             onClick={(e) => e.stopPropagation()}
           >
