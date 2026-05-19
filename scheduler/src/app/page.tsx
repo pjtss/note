@@ -77,6 +77,7 @@ export default function Home() {
   // 메모 검색 및 필터 상태
   const [memoSearchQuery, setMemoSearchQuery] = useState('');
   const [memoColorFilter, setMemoColorFilter] = useState('All');
+  const [selectedMemo, setSelectedMemo] = useState<Memo | null>(null);
 
   // Supabase 가이드 배너 토글
   const [showGuide, setShowGuide] = useState(false);
@@ -998,24 +999,29 @@ export default function Home() {
                           return (
                             <div key={memo.id} className="col-md-6 col-xl-6">
                               <div
+                                onClick={() => setSelectedMemo(memo)}
                                 className="card border-0 p-4 h-100 rounded-4 transition-all position-relative shadow-sm hover-up"
                                 style={{
                                   backgroundColor: memo.color || '#ffd166',
                                   color: isDarkColor ? '#ffffff' : '#2b2d42',
                                   boxShadow: '0 8px 24px rgba(0, 0, 0, 0.05)',
                                   transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
-                                  borderLeft: `5px solid ${isDarkColor ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.15)'}`
+                                  borderLeft: `5px solid ${isDarkColor ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.15)'}`,
+                                  cursor: 'pointer'
                                 }}
                               >
                                 <div className="d-flex flex-column h-100">
                                   <div className="d-flex align-items-start justify-content-between mb-2">
-                                    <h5 className="fw-bold mb-0" style={{ fontSize: '1.1rem', letterSpacing: '-0.3px' }}>
+                                    <h5 className="fw-bold mb-0 text-truncate pe-2" style={{ fontSize: '1.1rem', letterSpacing: '-0.3px', maxWidth: '80%' }}>
                                       {memo.title}
                                     </h5>
                                     
                                     <div className="d-flex gap-1">
                                       <button
-                                        onClick={() => handleStartMemoEdit(memo)}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleStartMemoEdit(memo);
+                                        }}
                                         className="btn btn-sm p-1 rounded-3 transition-all d-flex align-items-center justify-content-center border-0"
                                         style={{
                                           backgroundColor: 'rgba(255,255,255,0.25)',
@@ -1028,7 +1034,10 @@ export default function Home() {
                                         <i className="bi bi-pencil-fill" style={{ fontSize: '0.75rem' }}></i>
                                       </button>
                                       <button
-                                        onClick={() => removeMemo(memo.id)}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          removeMemo(memo.id);
+                                        }}
                                         className="btn btn-sm p-1 rounded-3 transition-all d-flex align-items-center justify-content-center border-0"
                                         style={{
                                           backgroundColor: 'rgba(255,255,255,0.25)',
@@ -1042,18 +1051,28 @@ export default function Home() {
                                       </button>
                                     </div>
                                   </div>
-
+ 
+                                  {/* Line-Clamp 기반 요약 뷰포트 장착 */}
                                   <p 
                                     className="flex-grow-1 mb-3 small" 
                                     style={{ 
                                       whiteSpace: 'pre-line', 
                                       lineHeight: '1.5',
-                                      opacity: 0.9
+                                      opacity: 0.9,
+                                      display: '-webkit-box',
+                                      WebkitLineClamp: 3,
+                                      WebkitBoxOrient: 'vertical',
+                                      overflow: 'hidden',
+                                      textOverflow: 'ellipsis'
                                     }}
                                   >
                                     {memo.content}
                                   </p>
 
+                                  <div className="mb-2 text-end" style={{ opacity: 0.6, fontSize: '0.7rem', fontWeight: 600 }}>
+                                    <i className="bi bi-plus-circle me-1"></i>클릭하여 전체 내용 보기
+                                  </div>
+ 
                                   <div 
                                     className="d-flex align-items-center justify-content-between border-top pt-2 mt-auto"
                                     style={{ 
@@ -1082,6 +1101,110 @@ export default function Home() {
           </>
         )}
       </div>
+
+      {/* Glassmorphic Memo Detail Popup Modal */}
+      {selectedMemo && (
+        <div 
+          className="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center px-3"
+          style={{
+            zIndex: 9999,
+            backgroundColor: 'rgba(15, 23, 42, 0.65)',
+            backdropFilter: 'blur(12px)',
+            transition: 'all 0.3s ease-in-out'
+          }}
+          onClick={() => setSelectedMemo(null)}
+        >
+          <div 
+            className="premium-card p-4 w-100 rounded-4 border-0 shadow-lg position-relative scale-in"
+            style={{
+              maxWidth: '650px',
+              backgroundColor: selectedMemo.color || '#ffd166',
+              color: (selectedMemo.color === '#2b2d42' || selectedMemo.color === '#118ab2') ? '#ffffff' : '#2b2d42',
+              boxShadow: '0 25px 60px rgba(0, 0, 0, 0.45)',
+              borderTop: `6px solid ${(selectedMemo.color === '#2b2d42' || selectedMemo.color === '#118ab2') ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.2)'}`
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="d-flex align-items-start justify-content-between mb-3 border-bottom pb-2" style={{ borderColor: 'rgba(0,0,0,0.08)' }}>
+              <div>
+                <h4 className="fw-bold mb-1 display-font" style={{ letterSpacing: '-0.3px' }}>
+                  {selectedMemo.title}
+                </h4>
+                <small style={{ opacity: 0.7, fontSize: '0.75rem' }} className="d-flex align-items-center gap-1">
+                  <i className="bi bi-clock-history"></i>
+                  {formatDateKST(selectedMemo.createdAt)} 작성됨
+                </small>
+              </div>
+              
+              <button 
+                onClick={() => setSelectedMemo(null)}
+                className="btn btn-sm rounded-circle d-flex align-items-center justify-content-center border-0 p-2"
+                style={{ 
+                  backgroundColor: 'rgba(0,0,0,0.06)',
+                  color: 'inherit',
+                  width: '32px',
+                  height: '32px'
+                }}
+                title="닫기"
+              >
+                <i className="bi bi-x-lg fs-6"></i>
+              </button>
+            </div>
+
+            {/* Modal Body (Scrollable Contents) */}
+            <div 
+              className="py-2 mb-4 scrollbar-premium" 
+              style={{ 
+                maxHeight: '400px', 
+                overflowY: 'auto',
+                whiteSpace: 'pre-line',
+                lineHeight: '1.6',
+                fontSize: '0.95rem'
+              }}
+            >
+              {selectedMemo.content}
+            </div>
+
+            {/* Modal Footer Controls */}
+            <div className="d-flex align-items-center justify-content-between border-top pt-3" style={{ borderColor: 'rgba(0,0,0,0.08)' }}>
+              <span className="badge px-3 py-2 rounded-pill fw-semibold" style={{ backgroundColor: 'rgba(0,0,0,0.06)', color: 'inherit', fontSize: '0.75rem' }}>
+                ✏️ Premium Editor Active
+              </span>
+              
+              <div className="d-flex gap-2">
+                <button
+                  onClick={() => {
+                    handleStartMemoEdit(selectedMemo);
+                    setSelectedMemo(null);
+                  }}
+                  className="btn btn-sm px-3 py-2 rounded-3 fw-bold d-flex align-items-center gap-1 border-0"
+                  style={{
+                    backgroundColor: 'rgba(255,255,255,0.4)',
+                    color: 'inherit',
+                    fontSize: '0.8rem'
+                  }}
+                >
+                  <i className="bi bi-pencil-fill"></i> 수정하기
+                </button>
+                <button
+                  onClick={() => {
+                    removeMemo(selectedMemo.id);
+                    setSelectedMemo(null);
+                  }}
+                  className="btn btn-sm px-3 py-2 rounded-3 fw-bold text-white d-flex align-items-center gap-1 border-0"
+                  style={{
+                    backgroundColor: '#dc3545',
+                    fontSize: '0.8rem'
+                  }}
+                >
+                  <i className="bi bi-trash-fill"></i> 삭제하기
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Elegant Footer */}
       <footer className="py-5 mt-5 bg-white border-top">
