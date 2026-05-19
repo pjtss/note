@@ -5,5 +5,5 @@
   command = "npm run build"
   publish = ".next"
 
-# Netlify's Next.js Essential Runtime is automatically installed for Next.js sites, 
-# but defining the build commands explicitly ensures correct build compilation.
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
