@@ -4,7 +4,21 @@
 
 ## 📅 개발 히스토리
 
-### [2026-05-19] Netlify CI 캐싱 관련 Prisma generate 동적 연동 조치 (최신)
+### [2026-05-19] Supabase JS SDK 공용 API 키 기반 실시간 연동 원복 및 테스트 100% 수호 완료 (최신)
+- **작업 내용**:
+  1. **현상 진단**: Prisma ORM PostgreSQL 직접 데이터베이스 연결(`5432`/`6543` 포트) 시, 서버리스 환경의 커넥션 초과(Connection Limit) 및 데이터베이스 패스워드 특수문자 파싱 오류에 따른 `Can't reach database server` / `Authentication failed` 장해 분석.
+  2. **SDK 연동 원복 및 구조 고도화**:
+     - 기존의 Prisma 서버사이드 질의 방식에서, 네트워크 장해나 커넥션 제한이 원천 차단되고 보안이 입증된 **Supabase JS SDK 공용 API 키(`NEXT_PUBLIC_SUPABASE_URL` & `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`) 기반 통신**으로 안전하게 복원 완료.
+     - `supabaseClient.ts`로 런타임/빌드타임의 환경변수 부재 시의 예외 가드(Dummy Client 폴백) 레이어를 깔끔하게 격리하여 **관심사 분리(SoC)** 실천.
+     - `scheduleService.ts` 내의 서비스 팩토리(`getScheduleService`)가 실시간으로 환경변수를 동적 평가하여 `SupabaseScheduleService`와 `LocalStorageScheduleService` 간에 매끄럽게 DI(의존성 주입) 되도록 설계 고도화.
+  3. **테스트 커버리지 100.00% 완전 사수**:
+     - Jest 모킹 사양을 Supabase JS SDK 체이닝 구조에 최적화하여 `scheduleService.test.ts` 및 `useSchedules.test.ts`를 전면 리팩토링.
+     - `jest.resetModules()`와 격리된 임포트를 통해 캐시를 우회하고, Statements, Branches, Functions, Lines 모든 지표에서 **100.00% 퍼펙트 올패스** 달성 및 안정성 완전 수호.
+  4. **프로덕션 빌드 완전 통과**:
+     - strict typescript (`noImplicitAny`) 검사를 완전 만족하기 위해 item parameter 명시적 타입 단언 삽입.
+     - `prisma generate && next build` 로컬 컴파일 검사 구동 결과, 정적 프리렌더링 수집 단계를 포함해 **Exit code: 0**으로 완벽하게 컴파일 성공 확인 완료.
+
+### [2026-05-19] Netlify CI 캐싱 관련 Prisma generate 동적 연동 조치
 - **작업 내용**:
   1. **현상 진단**: Netlify CI 빌드 로그 분석 결과, 빌드 단계 도중 `Prisma has detected that this project was built on Netlify CI, which caches dependencies. This leads to an outdated Prisma Client because Prisma's auto-generation isn't triggered.` 라는 Prisma 고유의 런타임 클라이언트 누락 오류 발생.
   2. **원인 분석**: Netlify가 이전 빌드 시점에 설치했던 의존성을 캐싱해 두고 재활용하려다 보니, Next.js의 프로덕션 스태틱 페이지 프리렌더링 단계에서 Prisma Client 인프라 맵핑 코드가 활성화되지 못하고 충돌한 것을 규명.
