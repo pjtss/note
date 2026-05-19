@@ -135,6 +135,7 @@ export class SupabaseScheduleService implements IScheduleService {
       .from('schedules')
       .insert([
         {
+          id: crypto.randomUUID(),
           title: input.title,
           description: input.description,
           startTime: input.startTime,
