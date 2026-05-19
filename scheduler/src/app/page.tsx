@@ -80,6 +80,22 @@ export default function Home() {
   const [memoColorFilter, setMemoColorFilter] = useState('All');
   const [selectedMemo, setSelectedMemo] = useState<Memo | null>(null);
 
+  // 글꼴 선택 커스터마이저 상태 & 옵션 정의
+  const [selectedFont, setSelectedFont] = useState<string>('Pretendard');
+  const fontOptions = [
+    { name: '💻 프리텐다드 (모던)', value: 'Pretendard', css: "'Pretendard', -apple-system, sans-serif" },
+    { name: '✍️ 나눔고딕 (단정)', value: 'Nanum Gothic', css: "'Nanum Gothic', sans-serif" },
+    { name: '📖 리디바탕 (도서)', value: 'Ridi Batang', css: "'RIDIBatang', Georgia, serif" },
+    { name: '🎨 바른히피 (키치)', value: 'Gamja Flower', css: "'Gamja Flower', cursive" },
+    { name: '🖋️ 손글씨 (감성)', value: 'Nanum Pen Script', css: "'Nanum Pen Script', cursive" }
+  ];
+
+  // 선택한 글꼴의 실제 CSS 폰트 패밀리 값 획득 헬퍼
+  const getSelectedFontCss = () => {
+    const found = fontOptions.find(f => f.value === selectedFont);
+    return found ? found.css : "'Pretendard', sans-serif";
+  };
+
   // Supabase 가이드 배너 토글
   const [showGuide, setShowGuide] = useState(false);
 
@@ -95,6 +111,19 @@ export default function Home() {
     { name: '연라벤더', hex: '#e8e8ff' },      // 은은한 안개 보라색 (라이트)
     { name: '체리블러썸', hex: '#ffe5ec' }     // 부드러운 분홍빛 (라이트)
   ];
+
+  useEffect(() => {
+    // 앱 기동 시 마지막에 갱신된 글꼴 설정 자동 복원
+    const savedFont = localStorage.getItem('selected_memo_font');
+    if (savedFont) {
+      setSelectedFont(savedFont);
+    }
+  }, []);
+
+  const handleFontChange = (fontValue: string) => {
+    setSelectedFont(fontValue);
+    localStorage.setItem('selected_memo_font', fontValue); // 새로운 폰트 선택 시 로컬 스토리지에 갱신 저장
+  };
 
   useEffect(() => {
     setMounted(true);
@@ -312,6 +341,16 @@ export default function Home() {
 
   return (
     <>
+      <style dangerouslySetInnerHTML={{ __html: `
+        @import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css");
+        @import url("https://fonts.googleapis.com/css2?family=Gamja+Flower&family=Nanum+Gothic:wght@400;700&family=Nanum+Pen+Script&display=swap");
+        @font-face {
+          font-family: 'RIDIBatang';
+          src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_twelve@1.1/RIDIBatang.woff') format('woff');
+          font-weight: normal;
+          font-style: normal;
+        }
+      `}} />
       {/* Premium Glass Header Navigation */}
       <nav className="navbar navbar-expand-lg glass-nav py-3 sticky-top">
         <div className="container">
@@ -881,6 +920,7 @@ export default function Home() {
                           value={memoTitle}
                           onChange={(e) => setMemoTitle(e.target.value)}
                           required
+                          style={{ fontFamily: getSelectedFontCss() }}
                         />
                       </div>
 
@@ -894,6 +934,7 @@ export default function Home() {
                           value={memoContent}
                           onChange={(e) => setMemoContent(e.target.value)}
                           required
+                          style={{ fontFamily: getSelectedFontCss() }}
                         />
                       </div>
 
@@ -961,16 +1002,28 @@ export default function Home() {
                       </div>
 
                       <div className="col-md-7 d-flex gap-2 justify-content-md-end align-items-center flex-wrap">
-                        <span className="small text-muted fw-semibold me-1"><i className="bi bi-funnel-fill"></i> 색상 필터:</span>
+                        <span className="small text-muted fw-semibold me-1"><i className="bi bi-funnel-fill"></i> 색상:</span>
                         <select
                           className="form-select form-premium-control w-auto"
                           value={memoColorFilter}
                           onChange={(e) => setMemoColorFilter(e.target.value)}
                           style={{ fontSize: '0.85rem' }}
                         >
-                          <option value="All">🌈 전체 색상</option>
+                          <option value="All">🌈 전체</option>
                           {pastelColors.map(c => (
                             <option key={c.hex} value={c.hex}>{c.name}</option>
+                          ))}
+                        </select>
+
+                        <span className="small text-muted fw-semibold ms-md-2 me-1"><i className="bi bi-fonts"></i> 글꼴:</span>
+                        <select
+                          className="form-select form-premium-control w-auto"
+                          value={selectedFont}
+                          onChange={(e) => handleFontChange(e.target.value)}
+                          style={{ fontSize: '0.85rem' }}
+                        >
+                          {fontOptions.map(font => (
+                            <option key={font.value} value={font.value}>{font.name}</option>
                           ))}
                         </select>
                       </div>
@@ -1016,7 +1069,15 @@ export default function Home() {
                               >
                                 <div className="d-flex flex-column h-100">
                                   <div className="d-flex align-items-start justify-content-between mb-2">
-                                    <h5 className="fw-bold mb-0 text-truncate pe-2" style={{ fontSize: '1.1rem', letterSpacing: '-0.3px', maxWidth: '80%' }}>
+                                    <h5 
+                                      className="fw-bold mb-0 text-truncate pe-2" 
+                                      style={{ 
+                                        fontSize: '1.1rem', 
+                                        letterSpacing: '-0.3px', 
+                                        maxWidth: '80%',
+                                        fontFamily: getSelectedFontCss()
+                                      }}
+                                    >
                                       {memo.title}
                                     </h5>
                                     
@@ -1066,7 +1127,8 @@ export default function Home() {
                                       WebkitLineClamp: 3,
                                       WebkitBoxOrient: 'vertical',
                                       overflow: 'hidden',
-                                      textOverflow: 'ellipsis'
+                                      textOverflow: 'ellipsis',
+                                      fontFamily: getSelectedFontCss()
                                     }}
                                   >
                                     <MarkdownRenderer content={memo.content} isDarkColor={isDarkColor} />
@@ -1124,7 +1186,8 @@ export default function Home() {
               backgroundColor: selectedMemo.color || '#fffbeb',
               color: (selectedMemo.color === '#0077b6' || selectedMemo.color === '#1d3557' || selectedMemo.color === '#2b2d42' || selectedMemo.color === '#118ab2') ? '#ffffff' : '#2b2d42',
               boxShadow: '0 25px 60px rgba(0, 0, 0, 0.45)',
-              borderTop: `6px solid ${(selectedMemo.color === '#0077b6' || selectedMemo.color === '#1d3557' || selectedMemo.color === '#2b2d42' || selectedMemo.color === '#118ab2') ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.2)'}`
+              borderTop: `6px solid ${(selectedMemo.color === '#0077b6' || selectedMemo.color === '#1d3557' || selectedMemo.color === '#2b2d42' || selectedMemo.color === '#118ab2') ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.2)'}`,
+              fontFamily: getSelectedFontCss()
             }}
             onClick={(e) => e.stopPropagation()}
           >
