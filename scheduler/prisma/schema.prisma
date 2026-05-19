@@ -19,3 +19,13 @@ model Schedule {
 
   @@map("schedules")
 }
+
+model Memo {
+  id        String   @id @default(uuid())
+  title     String
+  content   String?
+  color     String   @default("#2b2d42")
+  createdAt DateTime @default(now())
+
+  @@map("memos")
+}
