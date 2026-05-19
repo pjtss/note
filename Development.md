@@ -4,7 +4,26 @@
 
 ## 📅 개발 히스토리
 
-### [2026-05-20] 다중 사용자 로그인/회원가입 일반 계정 인증 및 3종 소셜 로그인(구글, 카카오, 네이버) 인증 포탈 구축 (최신)
+### [2026-05-20] JWT (JSON Web Token) 이중 토큰 인증/인가 파이프라인 및 리프레시 로테이션 (RTR) 구축 (최신)
+- **작업 내용**:
+  1. **요구사항 수용**: 
+     - 인증/인가 방식으로 `accessToken` (유효기간 10분)과 `refreshToken` (유효기간 24시간) 이중 토큰 전격 도입.
+     - `accessToken` 만료 시 한 쌍을 로테이션하여 재생성하는 토큰 갱신 API(`/api/auth/refresh`) 구현.
+     - 비로그인 유저는 모든 기능과 화면 진입 차단.
+     - 크로스 플랫폼(웹/앱) 기기 범용 영구 유지를 위해 `refreshToken`을 기기 `localStorage`에 자동 보관.
+  2. **JWT 경량 고안전 암호 서명 엔진 (`jwtService.ts`)**:
+     - Next.js Edge 런타임 호환을 위해 Node.js 기본 `crypto` HMAC-SHA256 기술을 활용하여 시그니처 위조 방지 및 만료 체크가 장착된 서명 엔진 수립.
+  3. **서버사이드 인증 API 라우터 구축**:
+     - `POST /api/auth/register`: SHA-256 단방향 패스워드 암호화 회원가입.
+     - `POST /api/auth/login`: 아이디/패스워드 확인 및 토큰 발행.
+     - `POST /api/auth/refresh`: RTR(Refresh Token Rotation) 기동으로 토큰 갱신.
+  4. **클라이언트 사일런트 토큰 리프레셔 (`authService.ts`)**:
+     - `getCurrentSession()` 시점에 AccessToken이 만료되었거나 임박했다면 조용히 refresh API를 타격하여 토큰 듀오를 재교부받아 세션을 자율 연장하는 사일런트 플로우 탑재.
+  5. **100% 테스트 무결성 수호**:
+     - `jwtService.test.ts` 및 정적 변수로 인한 상태 오염이 제거된 `authService.test.ts`를 완전 보강하여 전체 7개 테스트 스위트 99개 케이스의 커버리지 Statements, Branches, Functions, Lines 100.00% 올패스 유지.
+     - GitHub 원격 main 브랜치 `cc0d930` 에 안전 push 완료.
+
+### [2026-05-20] 다중 사용자 로그인/회원가입 일반 계정 인증 및 3종 소셜 로그인(구글, 카카오, 네이버) 인증 포탈 구축
 - **작업 내용**:
   1. **요구사항 완벽 수용**: 일반 회원가입/로그인(Username/Password) 및 3종 소셜 로그인(Google, Kakao, Naver OAuth) 인증 시스템 구현 요구 수렴.
   2. **유저 스키마 매핑 & JPA DDL Auto 자동 배포**:
