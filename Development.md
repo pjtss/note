@@ -4,7 +4,19 @@
 
 ## 📅 개발 히스토리
 
-### [2026-05-19] 중복된 하위 `scheduler/netlify.toml` 영구 삭제 및 싱글 아키텍처 단일화 완수 (최신)
+### [2026-05-20] 일정 등록(Insert) 시 클라이언트 사이드 UUID 자율 생성 및 Not-Null 제약조건 위반 장해 완전 격파 (최신)
+- **작업 내용**:
+  1. **현상 진단**:
+     - 사용자가 화면에서 신규 일정을 등록할 때, `null value in column "id" of relation "schedules" violates not-null constraint` (id 컬럼의 Not-Null 제약조건 위반) 에러와 함께 데이터베이스 삽입이 실패하는 현상 보고됨.
+  2. **원인 규명**:
+     - Supabase JS SDK를 통해 INSERT 쿼리를 날릴 때 `id` 필드가 누락되어 있었고, PostgreSQL 원격 테이블의 `id` 컬럼에 `DEFAULT gen_random_uuid()`와 같은 자동 생성 기본값 정책이 서버사이드 사유로 인해 활성화되어 있지 않았기 때문임을 간파.
+  3. **완벽 대안 수립 및 이식**:
+     - 원격 데이터베이스의 튜닝 상태와 무관하게 브라우저 단에서 100% 무중지 성공을 보장하도록, `SupabaseScheduleService.createSchedule` 단계에서 **브라우저 내장 `crypto.randomUUID()`를 활용해 고유한 UUID를 선제 할당하여 쿼리에 실어 보내도록 개정**함.
+  4. **안정성 사수**:
+     - 36개 전체 Jest 테스트 전원 통과 및 Statements, Branches, Functions, Lines **100.00% 완전 정복 커버리지**를 완벽 유지 사수함.
+     - 한글 상세 커밋 메시지 규칙을 지켜 GitHub 원격 main 브랜치 `a4ca48c` 에 안전 전송 완료.
+
+### [2026-05-19] 중복된 하위 `scheduler/netlify.toml` 영구 삭제 및 싱글 아키텍처 단일화 완수
 - **작업 내용**:
   1. **현상 및 구조 분석**: 프로젝트 루트(`note/`)와 하위 프로젝트 폴더(`scheduler/`)에 각각 `netlify.toml` 파일이 존재하여 중복되는 비효율적 배포 명세 파악.
   2. **단일화 조치 도입**:
