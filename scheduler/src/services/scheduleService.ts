@@ -1,5 +1,5 @@
-import { createClient } from '@supabase/supabase-js';
 import { Schedule, CreateScheduleInput, UpdateScheduleInput } from '../types/schedule';
+import { supabase } from './supabaseClient';
 
 export const isBrowser = {
   check: () => typeof window !== 'undefined'
@@ -11,30 +11,6 @@ export interface IScheduleService {
   updateSchedule(id: string, input: UpdateScheduleInput): Promise<Schedule>;
   deleteSchedule(id: string): Promise<void>;
 }
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || '';
-
-// Supabase 클라이언트 초기화 함수 (초기화 오류 방지 가드 및 이스탄불 완벽 제외 처리)
-/* istanbul ignore next */
-const createSupabaseClient = () => {
-  /* istanbul ignore next */
-  if (supabaseUrl && supabaseAnonKey) {
-    return createClient(supabaseUrl, supabaseAnonKey);
-  }
-  /* istanbul ignore next */
-  return {
-    from: () => ({
-      select: () => ({ order: () => Promise.resolve({ data: [], error: null }) }),
-      insert: () => ({ select: () => ({ single: () => Promise.resolve({ data: {}, error: null }) }) }),
-      update: () => ({ eq: () => ({ select: () => ({ single: () => Promise.resolve({ data: {}, error: null }) }) }) }),
-      delete: () => ({ eq: () => Promise.resolve({ error: null }) })
-    })
-  } as any;
-};
-
-/* istanbul ignore next */
-export const supabase = createSupabaseClient();
 
 // 1. LocalStorage 기반 서비스 구현 (Supabase 연결 에러 시 프리미엄 Fallback)
 export class LocalStorageScheduleService implements IScheduleService {
