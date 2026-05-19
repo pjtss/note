@@ -4,7 +4,16 @@
 
 ## 📅 개발 히스토리
 
-### [2026-05-19] Prisma ORM 기반 PostgreSQL 클라우드 직접 연동 완료 (최신)
+### [2026-05-19] Netlify CI 캐싱 관련 Prisma generate 동적 연동 조치 (최신)
+- **작업 내용**:
+  1. **현상 진단**: Netlify CI 빌드 로그 분석 결과, 빌드 단계 도중 `Prisma has detected that this project was built on Netlify CI, which caches dependencies. This leads to an outdated Prisma Client because Prisma's auto-generation isn't triggered.` 라는 Prisma 고유의 런타임 클라이언트 누락 오류 발생.
+  2. **원인 분석**: Netlify가 이전 빌드 시점에 설치했던 의존성을 캐싱해 두고 재활용하려다 보니, Next.js의 프로덕션 스태틱 페이지 프리렌더링 단계에서 Prisma Client 인프라 맵핑 코드가 활성화되지 못하고 충돌한 것을 규명.
+  3. **완벽 해결책 도입**:
+     - `scheduler/package.json`의 `build` 스크립트를 `"next build"` 단독 구동에서 **`"prisma generate && next build"`** 로 묶어 정밀 보완함.
+     - 이 조치를 통해 Netlify가 배포 빌드를 기동할 때마다 무조건 **Prisma Client 코드를 CI 환경에 최신 상태로 동적 생성**한 뒤 Next.js 빌드로 토스하게 만들어, 빌드 런타임 내의 의존성 불일치 문제를 원천 척결함.
+  4. **빌드 안정성 확보**: 로컬 컴파일 검증을 통해 `prisma generate` 구동 후 Next.js 빌드가 **Exit Code: 0**으로 완전하고 무결하게 통과됨을 재검증 완료함.
+
+### [2026-05-19] Prisma ORM 기반 PostgreSQL 클라우드 직접 연동 완료
 - **작업 내용**:
   1. **요구사항 분석**: Supabase JS client SDK 대신 Direct Connection String(`postgresql://...`)을 연동한 정밀 ORM(Object-Relational Mapping) 아키텍처로의 전환 지시 수렴.
   2. **ORM 패키지 설계 및 구축**:
