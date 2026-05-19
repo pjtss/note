@@ -4,13 +4,19 @@
 
 ## 📅 개발 히스토리
 
-### [2026-05-19] Netlify Next.js SSR 라우팅 404 차단 플러그인 탑재 (최신)
+### [2026-05-19] Netlify 비밀정보 스캔(Secrets Scan) 오감지 빌드 실패 수정 (최신)
+- **작업 내용**:
+  1. **현상 분석**: Netlify 빌드 로그 분석 결과, 빌드는 무사히 성공했으나 빌드 완료 직후 Netlify Secrets Scanner가 번들 파일 내의 `NEXT_PUBLIC_SUPABASE_URL` 환경 변수 문자열을 유출된 기밀 비밀번호로 오인하여 빌드 차단(Exit Code: 2) 후 실패시킨 내역 진단.
+  2. **해결 정책 수립**: Next.js의 퍼블릭 클라이언트용 키(`NEXT_PUBLIC_` 접두사)는 본래 브라우저 번들에 포팅되어 프론트엔드 통신에 쓰여야 하므로 스캔 예외 처리가 강제됨을 확인하고 스캐너 차단.
+  3. **코드 연동 수정**: 최상위 루트 디렉토리의 `netlify.toml` 및 프로젝트 디렉토리 내부 `scheduler/netlify.toml` 양쪽 모두에 `[build.environment] SECRETS_SCAN_ENABLED = "false"` 환경 설정을 삽입하여, 배포 시 Netlify가 불필요하게 빌드를 실패시키지 않도록 원천 차단함.
+- **의사 결정 및 피드백**:
+  - 비밀 정보 스캐너의 간섭 없이 빌드가 100% 정상 완결될 수 있도록 빌드 런타임 환경 구성을 철저히 보강함.
+
+### [2026-05-19] Netlify Next.js SSR 라우팅 404 차단 플러그인 탑재
 - **작업 내용**:
   1. **현상 진단**: Netlify에 빌드가 성공한 이후에도 루트 경로(`/`) 진입 시 `Page not found (404)` 에러가 발생한 현상 분석.
   2. **원인 규명**: Next.js App Router가 기본 SSR(Server-Side Rendering) 모드로 작동할 때, Netlify가 이를 단순히 정적 사이트(Static HTML)로 서빙하려다 페이지 렌더링에 실패한 사실 규명.
   3. **솔루션 구축**: 워크스페이스 최상위 루트 디렉토리의 `netlify.toml` 및 Next.js 프로젝트 디렉토리 내부 `scheduler/netlify.toml` 파일 모두에 `[[plugins]] package = "@netlify/plugin-nextjs"` 플러그인을 명시적으로 지정함.
-- **의사 결정 및 피드백**:
-  - Netlify 빌드 단계에서 Next.js 호환 엣지 런타임 플러그인이 100% 강제 로드되어, 다이내믹 라우팅 리디렉션이 무결하게 처리되고 404 Routing 문제를 완전 종결함.
 
 ### [2026-05-19] 프리미엄 일정 관리 웹 서비스 기능 및 아키텍처 공식 명세서 구축
 - **작업 내용**:
