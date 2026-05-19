@@ -6,6 +6,7 @@ import { ScheduleCategory, Schedule } from '../types/schedule';
 import { useMemos } from '../hooks/useMemos';
 import { Memo } from '../types/memo';
 import { useAuth } from '../hooks/useAuth';
+import { MarkdownRenderer } from '../components/MarkdownRenderer';
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<'schedule' | 'memo'>('schedule');
@@ -1055,11 +1056,10 @@ export default function Home() {
                                     </div>
                                   </div>
  
-                                  {/* Line-Clamp 기반 요약 뷰포트 장착 */}
-                                  <p 
-                                    className="flex-grow-1 mb-3 small" 
+                                  {/* Line-Clamp 기반 마크다운 요약 뷰포트 장착 */}
+                                  <div 
+                                    className="flex-grow-1 mb-3 text-start" 
                                     style={{ 
-                                      whiteSpace: 'pre-line', 
                                       lineHeight: '1.5',
                                       opacity: 0.9,
                                       display: '-webkit-box',
@@ -1069,8 +1069,8 @@ export default function Home() {
                                       textOverflow: 'ellipsis'
                                     }}
                                   >
-                                    {memo.content}
-                                  </p>
+                                    <MarkdownRenderer content={memo.content} isDarkColor={isDarkColor} />
+                                  </div>
 
                                   <div className="mb-2 text-end" style={{ opacity: 0.6, fontSize: '0.7rem', fontWeight: 600 }}>
                                     <i className="bi bi-plus-circle me-1"></i>클릭하여 전체 내용 보기
@@ -1155,18 +1155,17 @@ export default function Home() {
               </button>
             </div>
 
-            {/* Modal Body (Scrollable Contents) */}
+            {/* Modal Body (Scrollable Markdown Contents) */}
             <div 
-              className="py-2 mb-4 scrollbar-premium" 
+              className="py-2 mb-4 scrollbar-premium text-start" 
               style={{ 
                 maxHeight: '400px', 
                 overflowY: 'auto',
-                whiteSpace: 'pre-line',
                 lineHeight: '1.6',
                 fontSize: '0.95rem'
               }}
             >
-              {selectedMemo.content}
+              <MarkdownRenderer content={selectedMemo.content} isDarkColor={selectedMemo.color === '#0077b6' || selectedMemo.color === '#1d3557' || selectedMemo.color === '#2b2d42' || selectedMemo.color === '#118ab2'} />
             </div>
 
             {/* Modal Footer Controls */}
