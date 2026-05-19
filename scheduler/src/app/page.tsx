@@ -1131,7 +1131,7 @@ export default function Home() {
                                       fontFamily: getSelectedFontCss()
                                     }}
                                   >
-                                    <MarkdownRenderer content={memo.content} isDarkColor={isDarkColor} />
+                                    <MarkdownRenderer content={memo.content} isDarkColor={isDarkColor} isSummary={true} />
                                   </div>
 
                                   <div className="mb-2 text-end" style={{ opacity: 0.6, fontSize: '0.7rem', fontWeight: 600 }}>

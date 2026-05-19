@@ -4,16 +4,19 @@ interface MarkdownRendererProps {
   content: string;
   className?: string;
   isDarkColor?: boolean;
+  isSummary?: boolean; // 요약 카드 뷰용 모드 (Mac 코드 블록 및 헤더 겹침 충돌을 원천 차단)
 }
 
 /**
  * Antigravity Note - 초경량 고성능 프리미엄 마크다운 렌더러 컴포넌트
- * Mac 스타일 윈도우 디자인 프레임워크와 네온 보더, 원클릭 복사 스크립트를 통합하여 전문가급 하이엔드 코딩 감성을 선사합니다.
+ * Mac 스타일 윈도우 프레임 코드블록과 요약형 카드 뷰 겹침 방지 알고리즘(isSummary)을 통합하여,
+ * 핀보드 요약 뷰에서는 글자 겹침 없는 단정한 텍스트를, 상세 보기에서는 화려한 프리미엄 서식을 차별화하여 제공합니다.
  */
 export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ 
   content, 
   className = '',
-  isDarkColor = false
+  isDarkColor = false,
+  isSummary = false
 }) => {
   const [copySuccess, setCopySuccess] = useState<string | null>(null);
 
@@ -27,7 +30,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
     }).catch(() => {});
   };
 
-  // 마크다운 파서 및 렉서 기전 구동
+  // 마크다운 파서 및 렉서 기전 구동 (상세 보기용 풀 렌더러)
   const parseMarkdownToHtml = (text: string): string => {
     // 1. 기본 HTML 이스케이프 (XSS 방지)
     let html = text
@@ -72,15 +75,51 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
     return html;
   };
 
-  // 코드 블록 파싱을 정규식 대신 수동 분할(Split) 방식으로 전환하여, 복사 버튼이 달린 React 컴포넌트 돔 구조를 안정적으로 동시 매핑합니다!
-  const renderContentWithCodeBlocks = () => {
+  // 요약 카드 핀보드 뷰를 위한 고정밀 텍스트 정제기 (겹침 오류 완전 정벌)
+  const renderSummaryText = () => {
+    // 1. 코드 블록(```) 부분을 컴팩트하게 변환 (Mac 윈도우 등 큰 박스 요소를 제외하고 인라인 텍스트화)
+    let cleaned = content.replace(/```([\s\S]*?)```/g, (_, code) => {
+      // 코드 내 주석/줄바꿈을 정제하여 한 줄의 콤팩트 설명구로 병합
+      const snippet = code.trim().split('\n')[0] || '';
+      return ` 💻 [코드 블록: ${snippet.substring(0, 15)}...] `;
+    });
+
+    // 2. `#` 제목 기호들을 떼어내고 세련되게 변환
+    cleaned = cleaned.replace(/^#+\s+(.+)$/gm, '$1');
+
+    // 3. 인용구 `>` 기호들 떼어내기
+    cleaned = cleaned.replace(/^&gt;\s+(.+)$/gm, '$1');
+    cleaned = cleaned.replace(/^>\s+(.+)$/gm, '$1');
+
+    // 4. 인라인 코드( ` ), 볼드( ** ), 이탤릭( * ), 취소선( ~~ ) 문법 기호들 순수 텍스트로 이스케이프
+    cleaned = cleaned
+      .replace(/`([^`]+)`/g, '$1')
+      .replace(/\*\*([\s\S]+?)\*\*/g, '$1')
+      .replace(/\*([\s\S]+?)\*/g, '$1')
+      .replace(/~~([\s\S]+?)~~/g, '$1');
+
+    return (
+      <p 
+        className="m-0 small"
+        style={{ 
+          whiteSpace: 'pre-line',
+          lineHeight: '1.6',
+          fontSize: '0.85rem',
+          wordBreak: 'break-all'
+        }}
+      >
+        {cleaned}
+      </p>
+    );
+  };
+
+  // 상세 팝업 모달을 위한 Mac 스타일 윈도우와 다이나믹 HTML 융합 렌더러
+  const renderFullMarkdown = () => {
     const parts = content.split(/(```[\s\S]*?```)/g);
     
     return parts.map((part, index) => {
       if (part.startsWith('```') && part.endsWith('```')) {
-        // 코드 블록 추출
         const codeLines = part.slice(3, -3).trim().split('\n');
-        // 첫 번째 라인이 언어 지정자(예: javascript, html)이면 제거
         const hasLanguage = /^[a-zA-Z0-9_-]+$/.test(codeLines[0] || '');
         const language = hasLanguage ? codeLines[0] : 'code';
         const codeText = hasLanguage ? codeLines.slice(1).join('\n') : codeLines.join('\n');
@@ -88,7 +127,6 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
         const blockId = `code-block-${index}`;
         const isCopied = copySuccess === blockId;
 
-        // 하이엔드 다크 테일러드 윈도우 스타일 (VS Code / Carbon 감성 믹스)
         return (
           <div 
             key={index} 
@@ -96,11 +134,10 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
             style={{
               borderColor: isDarkColor ? 'rgba(255,255,255,0.18)' : 'rgba(0, 0, 0, 0.08)',
               boxShadow: '0 12px 28px rgba(0, 0, 0, 0.15)',
-              background: '#181825', // Deep Catppuccin 다크블랙
+              background: '#181825',
               fontFamily: 'system-ui, -apple-system, sans-serif'
             }}
           >
-            {/* Mac Style Window Titlebar Header */}
             <div 
               className="d-flex align-items-center justify-content-between px-3 py-2.5"
               style={{
@@ -108,14 +145,12 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
                 borderBottom: '1px solid rgba(255, 255, 255, 0.06)'
               }}
             >
-              {/* Traffic light buttons */}
               <div className="d-flex align-items-center gap-1.5">
                 <span className="rounded-circle" style={{ width: '10px', height: '10px', backgroundColor: '#ff5f56', display: 'inline-block' }}></span>
                 <span className="rounded-circle" style={{ width: '10px', height: '10px', backgroundColor: '#ffbd2e', display: 'inline-block' }}></span>
                 <span className="rounded-circle" style={{ width: '10px', height: '10px', backgroundColor: '#27c93f', display: 'inline-block' }}></span>
               </div>
               
-              {/* Language Badge */}
               <span 
                 className="text-uppercase small fw-bold tracking-wider font-monospace" 
                 style={{ 
@@ -127,7 +162,6 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
                 {language}
               </span>
 
-              {/* Copy Clipboard Button */}
               <button
                 onClick={() => handleCopyCode(codeText, blockId)}
                 className="btn btn-sm py-0.5 px-2 rounded-3 transition-all d-flex align-items-center gap-1 border-0"
@@ -153,7 +187,6 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
               </button>
             </div>
 
-            {/* Code Body Container (JetBrains Mono / Consolas font style) */}
             <pre 
               className="m-0 p-3.5 overflow-x-auto" 
               style={{ 
@@ -161,7 +194,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
                 lineHeight: '1.6',
                 fontFamily: 'JetBrains Mono, Fira Code, Consolas, monospace',
                 fontSize: '0.85rem',
-                color: '#cdd6f4' // Light Grayish White text (Mocha theme color)
+                color: '#cdd6f4'
               }}
             >
               <code>{codeText}</code>
@@ -170,7 +203,6 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
         );
       }
 
-      // 일반 마크다운 영역 파싱
       const parsedHtml = parseMarkdownToHtml(part);
       return (
         <div 
@@ -184,7 +216,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
 
   return (
     <div className={`markdown-body ${className}`}>
-      {renderContentWithCodeBlocks()}
+      {isSummary ? renderSummaryText() : renderFullMarkdown()}
     </div>
   );
 };
