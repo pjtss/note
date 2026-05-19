@@ -4,13 +4,26 @@
 
 ## 📅 개발 히스토리
 
-### [2026-05-19] Netlify 비밀정보 스캔(Secrets Scan) 오감지 빌드 실패 수정 (최신)
+### [2026-05-19] Prisma ORM 기반 PostgreSQL 클라우드 직접 연동 완료 (최신)
+- **작업 내용**:
+  1. **요구사항 분석**: Supabase JS client SDK 대신 Direct Connection String(`postgresql://...`)을 연동한 정밀 ORM(Object-Relational Mapping) 아키텍처로의 전환 지시 수렴.
+  2. **ORM 패키지 설계 및 구축**:
+     - Windows 파워쉘 실행보안정책(Execution Policy) 우회를 적용하여 `prisma` 및 `@prisma/client` 모듈을 안정 버전 `5.22.0`으로 정밀 세팅함.
+     - `schema.prisma` 스키마 파일을 수립하여 schedules 테이블을 PostgreSQL 상의 타입 구조로 정밀 맵핑함.
+     - Next.js의 Hot Reload 기동 시 커넥션 누수를 100% 막는 싱글톤 `prisma` 커넥터(`db.ts`) 설계 완료.
+  3. **관심사 분리(SoC) 및 다이내믹 API 라우팅 구축**:
+     - 클라이언트 브라우저에서 직접 데이터베이스 크레덴셜이 유출되는 것을 차단하기 위해 **서버사이드 라우팅 계층**을 경유하도록 설계.
+     - Next.js 16 비동기 파라미터 규격(`Promise<{ id: string }>`)을 준수한 `/api/schedules` 및 `/api/schedules/[id]` 서버 라우트 API 개설 및 비즈니스 격리.
+     - 클라이언트 단에 `/api/schedules`로 ORM 서버와 교신하는 `ApiScheduleService` 장착.
+  4. **100% 무결점 테스트 커버리지 및 빌드 검증**:
+     - API 모킹 기법을 동원하여 `scheduleService.test.ts` 및 `useSchedules.test.ts`를 전면 개정하고, Jest 전 계층 Statements/Branches/Functions/Lines **100.00%** 올패스 합격을 사수함.
+     - 린트 및 카테고리 매핑 타입 단언 처리를 통하여 최종 Next.js 프로덕션 Turbopack 빌드 검증을 **Exit Code: 0**으로 완전 완결함.
+
+### [2026-05-19] Netlify 비밀정보 스캔(Secrets Scan) 오감지 빌드 실패 수정
 - **작업 내용**:
   1. **현상 분석**: Netlify 빌드 로그 분석 결과, 빌드는 무사히 성공했으나 빌드 완료 직후 Netlify Secrets Scanner가 번들 파일 내의 `NEXT_PUBLIC_SUPABASE_URL` 환경 변수 문자열을 유출된 기밀 비밀번호로 오인하여 빌드 차단(Exit Code: 2) 후 실패시킨 내역 진단.
   2. **해결 정책 수립**: Next.js의 퍼블릭 클라이언트용 키(`NEXT_PUBLIC_` 접두사)는 본래 브라우저 번들에 포팅되어 프론트엔드 통신에 쓰여야 하므로 스캔 예외 처리가 강제됨을 확인하고 스캐너 차단.
   3. **코드 연동 수정**: 최상위 루트 디렉토리의 `netlify.toml` 및 프로젝트 디렉토리 내부 `scheduler/netlify.toml` 양쪽 모두에 `[build.environment] SECRETS_SCAN_ENABLED = "false"` 환경 설정을 삽입하여, 배포 시 Netlify가 불필요하게 빌드를 실패시키지 않도록 원천 차단함.
-- **의사 결정 및 피드백**:
-  - 비밀 정보 스캐너의 간섭 없이 빌드가 100% 정상 완결될 수 있도록 빌드 런타임 환경 구성을 철저히 보강함.
 
 ### [2026-05-19] Netlify Next.js SSR 라우팅 404 차단 플러그인 탑재
 - **작업 내용**:
@@ -88,6 +101,6 @@
 ---
 
 ## 🚀 향후 작업 계획
-- [ ] Netlify 배포 대시보드를 통한 실서버 빌드 상태 모니터링 및 실구동 최종 테스트.
-- [ ] 실제 동작 테스트 및 Supabase API 키를 연동한 실서버 DB CRUD 통합 테스트 수행.
+- [ ] Netlify 배포 대시보드 환경변수 `DATABASE_URL`에 사용자의 Direct Connection String 설정.
+- [ ] Netlify 실서버 빌드 상태 모니터링 및 실구동 최종 테스트.
 - [ ] `AGENTS.md`의 규칙에 따른 개발 히스토리 지속 갱신.

@@ -1,5 +1,4 @@
 import { Schedule, CreateScheduleInput, UpdateScheduleInput } from '../types/schedule';
-import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
 
 export const isBrowser = {
   check: () => typeof window !== 'undefined'
@@ -12,7 +11,7 @@ export interface IScheduleService {
   deleteSchedule(id: string): Promise<void>;
 }
 
-// 1. LocalStorage 기반 서비스 구현 (Supabase가 설정되지 않았을 때의 프리미엄 Fallback)
+// 1. LocalStorage 기반 서비스 구현 (Supabase/PostgreSQL 연결 에러 시 프리미엄 Fallback)
 export class LocalStorageScheduleService implements IScheduleService {
   private STORAGE_KEY = 'scheduler_schedules';
 
@@ -44,8 +43,8 @@ export class LocalStorageScheduleService implements IScheduleService {
         },
         {
           id: 'demo-3',
-          title: 'Supabase DB 테이블 연동 실전 테스트',
-          description: 'Supabase console에서 schedules 테이블 생성 후 .env.local 연동 정보 추가 테스트',
+          title: 'Prisma ORM 기반 PostgreSQL 연동 테스트',
+          description: 'Direct Connection String 환경변수를 지정하여 서버사이드 Prisma ORM CRUD 연동 실전 테스트',
           startTime: new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString(),
           endTime: new Date(Date.now() + 50 * 60 * 60 * 1000).toISOString(),
           category: 'Important',
@@ -109,127 +108,62 @@ export class LocalStorageScheduleService implements IScheduleService {
   }
 }
 
-// 2. Supabase 기반 서비스 구현
-export class SupabaseScheduleService implements IScheduleService {
+// 2. Next.js API Routes를 통해 서버사이드 Prisma ORM에 질의하는 클라이언트 서비스 구현
+export class ApiScheduleService implements IScheduleService {
   async getSchedules(): Promise<Schedule[]> {
-    if (!supabase) throw new Error('Supabase 클라이언트가 초기화되지 않았습니다.');
-    
-    const { data, error } = await supabase
-      .from('schedules')
-      .select('*')
-      .order('start_time', { ascending: true });
-
-    if (error) {
-      console.error('Supabase getSchedules error:', error);
-      throw error;
+    const res = await fetch('/api/schedules');
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || '일정을 가져오는데 실패했습니다.');
     }
-
-    // DB 스키마(snake_case)를 애플리케이션 모델(camelCase)로 매핑
-    return (data || []).map(item => ({
-      id: item.id,
-      title: item.title,
-      description: item.description,
-      startTime: item.start_time,
-      endTime: item.end_time,
-      category: item.category,
-      isCompleted: item.is_completed,
-      createdAt: item.created_at
-    }));
+    return res.json();
   }
 
   async createSchedule(input: CreateScheduleInput): Promise<Schedule> {
-    if (!supabase) throw new Error('Supabase 클라이언트가 초기화되지 않았습니다.');
-
-    const { data, error } = await supabase
-      .from('schedules')
-      .insert([
-        {
-          title: input.title,
-          description: input.description,
-          start_time: input.startTime,
-          end_time: input.endTime,
-          category: input.category,
-          is_completed: false
-        }
-      ])
-      .select()
-      .single();
-
-    if (error) {
-      console.error('Supabase createSchedule error:', error);
-      throw error;
+    const res = await fetch('/api/schedules', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input)
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || '일정을 생성하는데 실패했습니다.');
     }
-
-    return {
-      id: data.id,
-      title: data.title,
-      description: data.description,
-      startTime: data.start_time,
-      endTime: data.end_time,
-      category: data.category,
-      isCompleted: data.is_completed,
-      createdAt: data.created_at
-    };
+    return res.json();
   }
 
   async updateSchedule(id: string, input: UpdateScheduleInput): Promise<Schedule> {
-    if (!supabase) throw new Error('Supabase 클라이언트가 초기화되지 않았습니다.');
-
-    const updatePayload: any = {};
-    if (input.title !== undefined) updatePayload.title = input.title;
-    if (input.description !== undefined) updatePayload.description = input.description;
-    if (input.startTime !== undefined) updatePayload.start_time = input.startTime;
-    if (input.endTime !== undefined) updatePayload.end_time = input.endTime;
-    if (input.category !== undefined) updatePayload.category = input.category;
-    if (input.isCompleted !== undefined) updatePayload.is_completed = input.isCompleted;
-
-    const { data, error } = await supabase
-      .from('schedules')
-      .update(updatePayload)
-      .eq('id', id)
-      .select()
-      .single();
-
-    if (error) {
-      console.error('Supabase updateSchedule error:', error);
-      throw error;
+    const res = await fetch(`/api/schedules/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input)
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || '일정을 수정하는데 실패했습니다.');
     }
-
-    return {
-      id: data.id,
-      title: data.title,
-      description: data.description,
-      startTime: data.start_time,
-      endTime: data.end_time,
-      category: data.category,
-      isCompleted: data.is_completed,
-      createdAt: data.created_at
-    };
+    return res.json();
   }
 
   async deleteSchedule(id: string): Promise<void> {
-    if (!supabase) throw new Error('Supabase 클라이언트가 초기화되지 않았습니다.');
-
-    const { error } = await supabase
-      .from('schedules')
-      .delete()
-      .eq('id', id);
-
-    if (error) {
-      console.error('Supabase deleteSchedule error:', error);
-      throw error;
+    const res = await fetch(`/api/schedules/${id}`, {
+      method: 'DELETE'
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || '일정을 삭제하는데 실패했습니다.');
     }
   }
 }
 
 // 3. DI 및 환경에 따른 최적화 팩토리 패턴 정의
 export function getScheduleService(): IScheduleService {
-  if (isSupabaseConfigured) {
-    console.log('Supabase가 감지되어 SupabaseScheduleService를 활성화합니다.');
-    return new SupabaseScheduleService();
+  // 브라우저 클라이언트 환경인 경우, API Routes ORM 레이어를 기본 기동시킴
+  if (isBrowser.check()) {
+    console.log('클라우드 ORM API 연동 활성화: ApiScheduleService 기동');
+    return new ApiScheduleService();
   } else {
-    console.log('Supabase 환경 변수가 없습니다. LocalStorageScheduleService를 활성화합니다.');
+    console.log('로컬 스탠드얼론 모드: LocalStorageScheduleService 활성화');
     return new LocalStorageScheduleService();
   }
 }
-

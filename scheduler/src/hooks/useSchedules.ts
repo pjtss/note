@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { Schedule, CreateScheduleInput, UpdateScheduleInput, ScheduleCategory } from '../types/schedule';
-import { getScheduleService, SupabaseScheduleService } from '../services/scheduleService';
+import { Schedule, CreateScheduleInput, UpdateScheduleInput } from '../types/schedule';
+import { getScheduleService, ApiScheduleService } from '../services/scheduleService';
 
 export function useSchedules() {
   const [schedules, setSchedules] = useState<Schedule[]>([]);
@@ -16,7 +16,7 @@ export function useSchedules() {
   
   // 전역 mock 모듈 캐싱 한계를 넘기 위해 인스턴스 검사로 activeServiceType 동적 판단
   const activeServiceType = useMemo(() => {
-    return service instanceof SupabaseScheduleService ? 'Supabase' : 'LocalStorage';
+    return service instanceof ApiScheduleService ? 'Database' : 'LocalStorage';
   }, [service]);
 
   // 일정 조회

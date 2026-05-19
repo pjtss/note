@@ -1,6 +1,6 @@
 import { renderHook, act } from '@testing-library/react';
 import { useSchedules } from '../hooks/useSchedules';
-import { getScheduleService, SupabaseScheduleService, LocalStorageScheduleService } from '../services/scheduleService';
+import { getScheduleService, ApiScheduleService, LocalStorageScheduleService } from '../services/scheduleService';
 import { Schedule, CreateScheduleInput } from '../types/schedule';
 
 // 1. scheduleService 모킹
@@ -11,12 +11,12 @@ const mockCreateSchedule = jest.fn();
 const mockUpdateSchedule = jest.fn();
 const mockDeleteSchedule = jest.fn();
 
-// Supabase 인스턴스 분기 테스트를 위해 SupabaseScheduleService 프로토타입 상속 인스턴스 생성
-const mockSupabaseServiceInstance = Object.create(SupabaseScheduleService.prototype);
-mockSupabaseServiceInstance.getSchedules = mockGetSchedules;
-mockSupabaseServiceInstance.createSchedule = mockCreateSchedule;
-mockSupabaseServiceInstance.updateSchedule = mockUpdateSchedule;
-mockSupabaseServiceInstance.deleteSchedule = mockDeleteSchedule;
+// ApiScheduleService 인스턴스 분기 테스트를 위해 ApiScheduleService 프로토타입 상속 인스턴스 생성
+const mockApiServiceInstance = Object.create(ApiScheduleService.prototype);
+mockApiServiceInstance.getSchedules = mockGetSchedules;
+mockApiServiceInstance.createSchedule = mockCreateSchedule;
+mockApiServiceInstance.updateSchedule = mockUpdateSchedule;
+mockApiServiceInstance.deleteSchedule = mockDeleteSchedule;
 
 // LocalStorage 인스턴스 분기 테스트를 위해 LocalStorageScheduleService 프로토타입 상속 인스턴스 생성
 const mockLocalStorageServiceInstance = Object.create(LocalStorageScheduleService.prototype);
@@ -80,8 +80,8 @@ describe('useSchedules 커스텀 훅 테스트', () => {
     expect(hookResult.current.error).toBeNull();
   });
 
-  test('Supabase 서비스가 주입되었을 때 activeServiceType이 Supabase여야 함 (Branch 100%용)', async () => {
-    (getScheduleService as jest.Mock).mockReturnValue(mockSupabaseServiceInstance);
+  test('ApiScheduleService 서비스가 주입되었을 때 activeServiceType이 Database여야 함 (Branch 100%용)', async () => {
+    (getScheduleService as jest.Mock).mockReturnValue(mockApiServiceInstance);
     
     let hookResult: any;
     await act(async () => {
@@ -89,7 +89,7 @@ describe('useSchedules 커스텀 훅 테스트', () => {
       hookResult = result;
     });
 
-    expect(hookResult.current.activeServiceType).toBe('Supabase');
+    expect(hookResult.current.activeServiceType).toBe('Database');
   });
 
   test('마운트 시 일정 조회 에러 발생 시 error 상태에 적재해야 함', async () => {

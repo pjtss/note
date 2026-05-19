@@ -1,6 +1,6 @@
 import { 
   LocalStorageScheduleService, 
-  SupabaseScheduleService, 
+  ApiScheduleService, 
   getScheduleService,
   isBrowser
 } from '../services/scheduleService';
@@ -19,44 +19,10 @@ if (typeof global.crypto === 'undefined') {
   });
 }
 
-// 1. Supabase 모킹 준비
-const mockSelect = jest.fn();
-const mockInsert = jest.fn();
-const mockUpdate = jest.fn();
-const mockDelete = jest.fn();
-const mockEq = jest.fn();
-const mockOrder = jest.fn();
-const mockSingle = jest.fn();
-
-const mockSupabaseClient = {
-  from: jest.fn(() => ({
-    select: mockSelect,
-    insert: mockInsert,
-    update: mockUpdate,
-    delete: mockDelete,
-  }))
-};
-
-jest.mock('../lib/supabaseClient', () => {
-  return {
-    get isSupabaseConfigured() {
-      return mockIsSupabaseConfigured;
-    },
-    get supabase() {
-      return mockSupabaseInstance;
-    }
-  };
-});
-
-let mockIsSupabaseConfigured = false;
-let mockSupabaseInstance: any = null;
-
 describe('ScheduleService 테스트', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     localStorage.clear();
-    mockIsSupabaseConfigured = false;
-    mockSupabaseInstance = null;
   });
 
   describe('LocalStorageScheduleService 테스트', () => {
@@ -168,196 +134,136 @@ describe('ScheduleService 테스트', () => {
     });
   });
 
-  describe('SupabaseScheduleService 테스트', () => {
-    let service: SupabaseScheduleService;
+  describe('ApiScheduleService 테스트', () => {
+    let service: ApiScheduleService;
+    let originalFetch: any;
 
     beforeEach(() => {
-      mockIsSupabaseConfigured = true;
-      mockSupabaseInstance = mockSupabaseClient;
-      service = new SupabaseScheduleService();
+      service = new ApiScheduleService();
+      originalFetch = global.fetch;
+      global.fetch = jest.fn();
     });
 
-    test('Supabase 미초기화 시 getSchedules에서 에러가 throw 되어야 함', async () => {
-      mockSupabaseInstance = null;
-      await expect(service.getSchedules()).rejects.toThrow('Supabase 클라이언트가 초기화되지 않았습니다.');
+    afterEach(() => {
+      global.fetch = originalFetch;
     });
 
-    test('Supabase 미초기화 시 createSchedule에서 에러가 throw 되어야 함', async () => {
-      mockSupabaseInstance = null;
-      await expect(service.createSchedule({} as any)).rejects.toThrow('Supabase 클라이언트가 초기화되지 않았습니다.');
-    });
-
-    test('Supabase 미초기화 시 updateSchedule에서 에러가 throw 되어야 함', async () => {
-      mockSupabaseInstance = null;
-      await expect(service.updateSchedule('1', {})).rejects.toThrow('Supabase 클라이언트가 초기화되지 않았습니다.');
-    });
-
-    test('Supabase 미초기화 시 deleteSchedule에서 에러가 throw 되어야 함', async () => {
-      mockSupabaseInstance = null;
-      await expect(service.deleteSchedule('1')).rejects.toThrow('Supabase 클라이언트가 초기화되지 않았습니다.');
-    });
-
-    test('getSchedules - Supabase 연동 데이터 조회 및 카멜케이스 변환 매핑 테스트', async () => {
-      const mockRawData = [
-        {
-          id: 'sb-1',
-          title: 'Supabase 일정 1',
-          description: '설명',
-          start_time: '2026-05-19T00:00:00Z',
-          end_time: '2026-05-19T02:00:00Z',
-          category: 'Work',
-          is_completed: false,
-          created_at: '2026-05-19T00:00:00Z'
-        }
-      ];
-
-      mockSelect.mockReturnValue({
-        order: mockOrder.mockResolvedValue({ data: mockRawData, error: null })
+    test('getSchedules - 성공 시 데이터가 그대로 반환되어야 함', async () => {
+      const mockData = [{ id: '1', title: '일정 1', startTime: '...', endTime: '...', category: 'Work', isCompleted: false, createdAt: '...' }];
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        json: jest.fn().mockResolvedValue(mockData)
       });
 
-      const result = await service.getSchedules();
-      expect(result.length).toBe(1);
-      expect(result[0].id).toBe('sb-1');
-      expect(result[0].startTime).toBe('2026-05-19T00:00:00Z');
-      expect(result[0].isCompleted).toBe(false);
+      const res = await service.getSchedules();
+      expect(res).toEqual(mockData);
+      expect(global.fetch).toHaveBeenCalledWith('/api/schedules');
     });
 
-    test('getSchedules - DB에 데이터가 하나도 없을 시 빈 배열을 리턴해야 함 (Branch 100%용)', async () => {
-      mockSelect.mockReturnValue({
-        order: mockOrder.mockResolvedValue({ data: null, error: null })
+    test('getSchedules - 실패 시 에러가 throw 되어야 함 (JSON 에러 메시지)', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: false,
+        json: jest.fn().mockResolvedValue({ error: 'DB 연결 에러' })
       });
 
-      const result = await service.getSchedules();
-      expect(result).toEqual([]);
+      await expect(service.getSchedules()).rejects.toThrow('DB 연결 에러');
     });
 
-    test('getSchedules - DB 에러 발생 시 에러가 throw 되어야 함', async () => {
-      mockSelect.mockReturnValue({
-        order: mockOrder.mockResolvedValue({ data: null, error: { message: 'DB Connection Fail' } })
+    test('getSchedules - 실패 시 에러가 throw 되어야 함 (JSON 파싱 에러인 경우의 폴백)', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: false,
+        json: jest.fn().mockRejectedValue(new Error('JSON Parse Error'))
       });
 
-      await expect(service.getSchedules()).rejects.toEqual({ message: 'DB Connection Fail' });
+      await expect(service.getSchedules()).rejects.toThrow('일정을 가져오는데 실패했습니다.');
     });
 
-    test('createSchedule - Supabase 일정 신규 추가 테스트', async () => {
-      const input: CreateScheduleInput = {
-        title: '신규 Supabase 일정',
-        description: '설명글',
-        startTime: '2026-05-19T10:00:00Z',
-        endTime: '2026-05-19T12:00:00Z',
-        category: 'Work'
-      };
-
-      const mockInserted = {
-        id: 'sb-new',
-        title: input.title,
-        description: input.description,
-        start_time: input.startTime,
-        end_time: input.endTime,
-        category: input.category,
-        is_completed: false,
-        created_at: '2026-05-19T00:00:00Z'
-      };
-
-      mockInsert.mockReturnValue({
-        select: jest.fn(() => ({
-          single: mockSingle.mockResolvedValue({ data: mockInserted, error: null })
-        }))
+    test('createSchedule - 성공 시 생성된 일정을 반환해야 함', async () => {
+      const input: CreateScheduleInput = { title: '생성', startTime: '...', endTime: '...', category: 'Work' };
+      const mockResult = { id: 'new-id', ...input, isCompleted: false, createdAt: '...' };
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        json: jest.fn().mockResolvedValue(mockResult)
       });
 
-      const result = await service.createSchedule(input);
-      expect(result.id).toBe('sb-new');
-      expect(result.title).toBe('신규 Supabase 일정');
-      expect(result.startTime).toBe('2026-05-19T10:00:00Z');
+      const res = await service.createSchedule(input);
+      expect(res).toEqual(mockResult);
+      expect(global.fetch).toHaveBeenCalledWith('/api/schedules', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(input)
+      });
     });
 
-    test('createSchedule - DB 에러 시 throw 되어야 함', async () => {
-      mockInsert.mockReturnValue({
-        select: jest.fn(() => ({
-          single: mockSingle.mockResolvedValue({ data: null, error: { message: 'Insert Error' } })
-        }))
+    test('createSchedule - 실패 시 에러가 throw 되어야 함 (JSON 파싱 실패 대응)', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: false,
+        json: jest.fn().mockRejectedValue(new Error('Fail'))
       });
 
-      await expect(service.createSchedule({} as any)).rejects.toEqual({ message: 'Insert Error' });
+      await expect(service.createSchedule({} as any)).rejects.toThrow('일정을 생성하는데 실패했습니다.');
     });
 
-    test('updateSchedule - Supabase 일정 업데이트 테스트 (일부 필드 누락 및 전체)', async () => {
-      const input: UpdateScheduleInput = {
-        title: '수정 완료',
-        description: '설명 수정',
-        startTime: '2026-05-19T11:00:00Z',
-        endTime: '2026-05-19T13:00:00Z',
-        category: 'Meeting',
-        isCompleted: true
-      };
-
-      const mockUpdated = {
-        id: 'sb-update',
-        title: input.title,
-        description: input.description,
-        start_time: input.startTime,
-        end_time: input.endTime,
-        category: input.category,
-        is_completed: input.isCompleted,
-        created_at: '2026-05-19T00:00:00Z'
-      };
-
-      mockUpdate.mockReturnValue({
-        eq: mockEq.mockReturnValue({
-          select: jest.fn(() => ({
-            single: mockSingle.mockResolvedValue({ data: mockUpdated, error: null })
-          }))
-        })
+    test('updateSchedule - 성공 시 업데이트된 일정을 반환해야 함', async () => {
+      const input: UpdateScheduleInput = { title: '수정' };
+      const mockResult = { id: 'id-1', title: '수정', startTime: '...', endTime: '...', category: 'Work', isCompleted: false, createdAt: '...' };
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        json: jest.fn().mockResolvedValue(mockResult)
       });
 
-      const result = await service.updateSchedule('sb-update', input);
-      expect(result.title).toBe('수정 완료');
-      expect(result.isCompleted).toBe(true);
-
-      const emptyResult = await service.updateSchedule('sb-update', {});
-      expect(emptyResult.title).toBe('수정 완료');
+      const res = await service.updateSchedule('id-1', input);
+      expect(res).toEqual(mockResult);
+      expect(global.fetch).toHaveBeenCalledWith('/api/schedules/id-1', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(input)
+      });
     });
 
-    test('updateSchedule - DB 에러 시 throw 되어야 함', async () => {
-      mockUpdate.mockReturnValue({
-        eq: mockEq.mockReturnValue({
-          select: jest.fn(() => ({
-            single: mockSingle.mockResolvedValue({ data: null, error: { message: 'Update Failed' } })
-          }))
-        })
+    test('updateSchedule - 실패 시 에러가 throw 되어야 함 (JSON 파싱 실패 대응)', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: false,
+        json: jest.fn().mockRejectedValue(new Error('Fail'))
       });
 
-      await expect(service.updateSchedule('sb-id', {})).rejects.toEqual({ message: 'Update Failed' });
+      await expect(service.updateSchedule('id-1', {})).rejects.toThrow('일정을 수정하는데 실패했습니다.');
     });
 
-    test('deleteSchedule - Supabase 일정 삭제 테스트', async () => {
-      mockDelete.mockReturnValue({
-        eq: mockEq.mockResolvedValue({ error: null })
+    test('deleteSchedule - 성공 시 무리 없이 해결되어야 함', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: true
       });
 
-      await expect(service.deleteSchedule('sb-delete')).resolves.not.toThrow();
+      await expect(service.deleteSchedule('id-1')).resolves.not.toThrow();
+      expect(global.fetch).toHaveBeenCalledWith('/api/schedules/id-1', {
+        method: 'DELETE'
+      });
     });
 
-    test('deleteSchedule - DB 에러 시 throw 되어야 함', async () => {
-      mockDelete.mockReturnValue({
-        eq: mockEq.mockResolvedValue({ error: { message: 'Delete Failed' } })
+    test('deleteSchedule - 실패 시 에러가 throw 되어야 함 (JSON 파싱 실패 대응)', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: false,
+        json: jest.fn().mockRejectedValue(new Error('Fail'))
       });
 
-      await expect(service.deleteSchedule('sb-delete')).rejects.toEqual({ message: 'Delete Failed' });
+      await expect(service.deleteSchedule('id-1')).rejects.toThrow('일정을 삭제하는데 실패했습니다.');
     });
   });
 
   describe('getScheduleService 팩토리 테스트', () => {
-    test('Supabase 설정이 안 되어 있을 시 LocalStorageScheduleService를 리턴해야 함', () => {
-      mockIsSupabaseConfigured = false;
+    test('브라우저 환경인 경우 ApiScheduleService를 리턴해야 함', () => {
+      const spy = jest.spyOn(isBrowser, 'check').mockReturnValue(true);
       const service = getScheduleService();
-      expect(service).toBeInstanceOf(LocalStorageScheduleService);
+      expect(service).toBeInstanceOf(ApiScheduleService);
+      spy.mockRestore();
     });
 
-    test('Supabase 설정이 활성화되어 있을 시 SupabaseScheduleService를 리턴해야 함', () => {
-      mockIsSupabaseConfigured = true;
+    test('브라우저 환경이 아닌 경우 LocalStorageScheduleService를 리턴해야 함', () => {
+      const spy = jest.spyOn(isBrowser, 'check').mockReturnValue(false);
       const service = getScheduleService();
-      expect(service).toBeInstanceOf(SupabaseScheduleService);
+      expect(service).toBeInstanceOf(LocalStorageScheduleService);
+      spy.mockRestore();
     });
   });
 });
