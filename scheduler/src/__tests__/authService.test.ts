@@ -1,33 +1,10 @@
 import {
-  LocalStorageAuthService,
-  SupabaseAuthService,
+  JwtAuthService,
   getAuthService
 } from '../services/authService';
-import { supabase } from '../services/supabaseClient';
 import { isBrowser } from '../services/scheduleService';
 
-// 1. Supabase Client 모킹
-jest.mock('../services/supabaseClient', () => {
-  const mockGetSession = jest.fn();
-  const mockSignUp = jest.fn();
-  const mockSignInWithPassword = jest.fn();
-  const mockSignInWithOAuth = jest.fn();
-  const mockSignOut = jest.fn();
-
-  return {
-    supabase: {
-      auth: {
-        getSession: mockGetSession,
-        signUp: mockSignUp,
-        signInWithPassword: mockSignInWithPassword,
-        signInWithOAuth: mockSignInWithOAuth,
-        signOut: mockSignOut
-      }
-    }
-  };
-});
-
-// 2. isBrowser 모킹
+// 1. isBrowser 모킹
 jest.mock('../services/scheduleService', () => {
   return {
     isBrowser: {
@@ -36,267 +13,201 @@ jest.mock('../services/scheduleService', () => {
   };
 });
 
-describe('AuthService 테스트', () => {
-  const mockAuth = supabase.auth;
-  const mockGetSession = mockAuth.getSession as jest.Mock;
-  const mockSignUp = mockAuth.signUp as jest.Mock;
-  const mockSignInWithPassword = mockAuth.signInWithPassword as jest.Mock;
-  const mockSignInWithOAuth = mockAuth.signInWithOAuth as jest.Mock;
-  const mockSignOut = mockAuth.signOut as jest.Mock;
+describe('JwtAuthService 테스트', () => {
+  let service: JwtAuthService;
+  let mockFetch: jest.Mock;
 
   beforeEach(() => {
     jest.clearAllMocks();
     localStorage.clear();
     (isBrowser.check as jest.Mock).mockReturnValue(true);
+    service = new JwtAuthService();
+
+    // fetch 모킹
+    mockFetch = jest.fn();
+    global.fetch = mockFetch;
   });
 
-  describe('LocalStorageAuthService 테스트', () => {
-    let service: LocalStorageAuthService;
-
-    beforeEach(() => {
-      service = new LocalStorageAuthService();
-    });
-
-    test('getCurrentSession - 세션이 없을 시 null을 반환해야 함', async () => {
-      const session = await service.getCurrentSession();
-      expect(session).toBeNull();
-    });
-
-    test('getCurrentSession - SSR 환경(isBrowser false)인 경우 null을 반환해야 함', async () => {
-      (isBrowser.check as jest.Mock).mockReturnValue(false);
-      const session = await service.getCurrentSession();
-      expect(session).toBeNull();
-    });
-
-    test('register - 성공 시 신규 유저 세션을 생성하고 저장해야 함', async () => {
-      const input = { username: 'test@test.com', password: 'password', displayName: '홍길동' };
-      const session = await service.register(input);
-
-      expect(session.username).toBe(input.username);
-      expect(session.displayName).toBe(input.displayName);
-      expect(session.provider).toBe('local');
-      expect(session.id).toBeDefined();
-
-      const current = await service.getCurrentSession();
-      expect(current).toEqual(session);
-    });
-
-    test('register - 이미 가입된 아이디인 경우 에러를 throw 해야 함', async () => {
-      const input = { username: 'dup@test.com', password: '123', displayName: '가나다' };
-      await service.register(input);
-
-      await expect(service.register(input)).rejects.toThrow('이미 등록된 아이디(이메일)입니다.');
-    });
-
-    test('register - SSR 환경일 시 로컬스토리지 저장을 건너뛰어야 함 (Branch 용)', async () => {
-      (isBrowser.check as jest.Mock).mockReturnValue(false);
-      const input = { username: 'ssr@test.com', displayName: 'SSR' };
-      const session = await service.register(input);
-      expect(session.id).toBeDefined();
-    });
-
-    test('login - 성공 시 올바른 정보를 받으면 세션을 할당해야 함', async () => {
-      const input = { username: 'login@test.com', password: 'password', displayName: '홍길동' };
-      await service.register(input);
-
-      // 세션 비우기
-      localStorage.removeItem('scheduler_user_session');
-
-      const session = await service.login({ username: input.username, password: input.password });
-      expect(session.username).toBe(input.username);
-      expect(session.displayName).toBe(input.displayName);
-    });
-
-    test('login - 패스워드나 아이디가 다르면 에러를 throw 해야 함', async () => {
-      await expect(service.login({ username: 'none@test.com', password: '123' }))
-        .rejects.toThrow('아이디 또는 비밀번호가 일치하지 않습니다.');
-    });
-
-    test('socialLogin - 제공자별 모의 소셜 로그인 세션을 즉시 제공해야 함', async () => {
-      const gSession = await service.socialLogin('google');
-      expect(gSession.provider).toBe('google');
-      expect(gSession.displayName).toBe('구글 프리미엄 유저');
-
-      const kSession = await service.socialLogin('kakao');
-      expect(kSession.provider).toBe('kakao');
-      expect(kSession.displayName).toBe('카카오 라이언');
-
-      const nSession = await service.socialLogin('naver');
-      expect(nSession.provider).toBe('naver');
-      expect(nSession.displayName).toBe('네이버 그린멤버');
-    });
-
-    test('logout - 세션을 제거해야 함', async () => {
-      const input = { username: 'logout@test.com', password: 'password', displayName: '홍길동' };
-      await service.register(input);
-
-      await service.logout();
-      const current = await service.getCurrentSession();
-      expect(current).toBeNull();
-    });
-
-    test('logout - SSR 환경일 시 조용히 넘어가야 함 (Branch 용)', async () => {
-      (isBrowser.check as jest.Mock).mockReturnValue(false);
-      await service.logout();
-    });
+  afterEach(() => {
+    // @ts-ignore
+    delete global.fetch;
   });
 
-  describe('SupabaseAuthService 테스트', () => {
-    let service: SupabaseAuthService;
-
-    beforeEach(() => {
-      service = new SupabaseAuthService();
-    });
-
-    test('getCurrentSession - 세션이 존재하면 가공된 유저 세션을 반환해야 함', async () => {
-      const mockSession = {
-        user: {
-          id: 'u-1',
-          email: 'cloud@test.com',
-          created_at: '2026-05-20',
-          user_metadata: { displayName: '구름유저' },
-          app_metadata: { provider: 'google' }
-        }
-      };
-      mockGetSession.mockResolvedValue({ data: { session: mockSession }, error: null });
-
-      const session = await service.getCurrentSession();
-      expect(session?.id).toBe('u-1');
-      expect(session?.displayName).toBe('구름유저');
-      expect(session?.provider).toBe('google');
-    });
-
-    test('getCurrentSession - user_metadata 및 email이 없는 예외 케이스 처리 (Branch 100%용)', async () => {
-      const mockSession = {
-        user: {
-          id: 'u-1',
-          created_at: '2026-05-20'
-        }
-      };
-      mockGetSession.mockResolvedValue({ data: { session: mockSession }, error: null });
-
-      const session = await service.getCurrentSession();
-      expect(session?.username).toBe('supabase_user@unknown.com');
-      expect(session?.displayName).toBe('클라우드 멤버');
-    });
-
-    test('getCurrentSession - 에러나 세션 부재 시 null을 반환해야 함', async () => {
-      mockGetSession.mockResolvedValue({ data: { session: null }, error: { message: 'Auth Error' } });
-      const session = await service.getCurrentSession();
-      expect(session).toBeNull();
-    });
-
-    test('register - 성공 시 가입된 세션을 반환해야 함', async () => {
-      const mockUser = { id: 'new-u', email: 'reg@test.com', created_at: '2026-05-20' };
-      mockSignUp.mockResolvedValue({ data: { user: mockUser }, error: null });
-
-      const res = await service.register({ username: 'reg@test.com', password: '123', displayName: '홍길동' });
-      expect(res.id).toBe('new-u');
-      expect(res.displayName).toBe('홍길동');
-    });
-
-    test('register - 에러 발생 시 throw 해야 함', async () => {
-      mockSignUp.mockResolvedValue({ data: { user: null }, error: { message: 'SignUp Fail' } });
-      await expect(service.register({ username: '', displayName: '' })).rejects.toThrow('SignUp Fail');
-    });
-
-    test('register - user 데이터가 없을 시 throw 해야 함', async () => {
-      mockSignUp.mockResolvedValue({ data: { user: null }, error: null });
-      await expect(service.register({ username: '', displayName: '' })).rejects.toThrow('회원가입에 실패했습니다.');
-    });
-
-    test('login - 성공 시 로그인 세션을 반환해야 함', async () => {
-      const mockUser = {
-        id: 'u-1',
-        email: 'log@test.com',
-        created_at: '2026-05-20',
-        user_metadata: { displayName: '로그인남' }
-      };
-      mockSignInWithPassword.mockResolvedValue({ data: { user: mockUser }, error: null });
-
-      const res = await service.login({ username: 'log@test.com', password: '123' });
-      expect(res.id).toBe('u-1');
-      expect(res.displayName).toBe('로그인남');
-    });
-
-    test('login - metadata가 비어있을 시 아이디 기반 명칭 매핑 (Branch 100%용)', async () => {
-      const mockUser = {
-        id: 'u-1',
-        email: 'log@test.com',
-        created_at: '2026-05-20'
-      };
-      mockSignInWithPassword.mockResolvedValue({ data: { user: mockUser }, error: null });
-
-      const res = await service.login({ username: 'log@test.com', password: '123' });
-      expect(res.displayName).toBe('log');
-    });
-
-    test('login - 에러 발생 시 throw 해야 함', async () => {
-      mockSignInWithPassword.mockResolvedValue({ data: { user: null }, error: { message: 'SignIn Fail' } });
-      await expect(service.login({ username: '', password: '' })).rejects.toThrow('SignIn Fail');
-    });
-
-    test('login - user 데이터가 없을 시 throw 해야 함', async () => {
-      mockSignInWithPassword.mockResolvedValue({ data: { user: null }, error: null });
-      await expect(service.login({ username: '', password: '' })).rejects.toThrow('로그인에 실패했습니다.');
-    });
-
-    test('socialLogin - 성공 시 리다이렉트 대기 세션을 반환해야 함', async () => {
-      mockSignInWithOAuth.mockResolvedValue({ error: null });
-      const res = await service.socialLogin('google');
-      expect(res.id).toBe('oauth-pending');
-      expect(res.displayName).toBe('google 인증 진행 중');
-    });
-
-    test('socialLogin - 실패 시 에러를 throw 해야 함', async () => {
-      mockSignInWithOAuth.mockResolvedValue({ error: { message: 'OAuth Error' } });
-      await expect(service.socialLogin('google')).rejects.toThrow('OAuth Error');
-    });
-
-    test('logout - 성공 시 로그아웃이 완료되어야 함', async () => {
-      mockSignOut.mockResolvedValue({ error: null });
-      await expect(service.logout()).resolves.not.toThrow();
-    });
-
-    test('logout - 실패 시 에러를 throw 해야 함', async () => {
-      mockSignOut.mockResolvedValue({ error: { message: 'SignOut Fail' } });
-      await expect(service.logout()).rejects.toThrow('SignOut Fail');
-    });
+  test('getAccessToken - 저장된 토큰이 없을 시 null을 반환해야 함', () => {
+    expect(service.getAccessToken()).toBeNull();
   });
 
-  describe('getAuthService 팩토리 테스트', () => {
-    const originalEnv = process.env;
+  test('getCurrentSession - 세션과 리프레시 토큰이 없으면 null을 반환해야 함', async () => {
+    const session = await service.getCurrentSession();
+    expect(session).toBeNull();
+  });
 
-    beforeEach(() => {
-      process.env = { ...originalEnv };
+  test('getCurrentSession - SSR 환경(isBrowser false)인 경우 null을 반환해야 함', async () => {
+    (isBrowser.check as jest.Mock).mockReturnValue(false);
+    const session = await service.getCurrentSession();
+    expect(session).toBeNull();
+  });
+
+  test('getCurrentSession - 세션과 만료되지 않은 AccessToken이 존재하면 즉시 세션을 반환해야 함', async () => {
+    const mockUser = { id: 'u-1', username: 'test@test.com', displayName: '홍길동', provider: 'local' };
+    localStorage.setItem('scheduler_jwt_user', JSON.stringify(mockUser));
+    localStorage.setItem('scheduler_jwt_refresh', 'refresh-token');
+
+    // 만료 시각이 넉넉한 Access Token 가제작 (10분 유효)
+    const header = Buffer.from(JSON.stringify({ alg: 'HS256' })).toString('base64');
+    const expTime = Math.floor(Date.now() / 1000) + 500; // 500초 남음
+    const payload = Buffer.from(JSON.stringify({ exp: expTime })).toString('base64');
+    const mockAccessToken = `${header}.${payload}.sig`;
+
+    localStorage.setItem('scheduler_jwt_access', mockAccessToken);
+
+    const session = await service.getCurrentSession();
+    expect(session).toEqual(mockUser);
+  });
+
+  test('getCurrentSession - AccessToken이 유효하지만 거의 만료(30초 미만 남음)인 경우 자동 refresh토큰 흐름을 타야 함', async () => {
+    const mockUser = { id: 'u-1', username: 'test@test.com', displayName: '홍길동', provider: 'local' };
+    localStorage.setItem('scheduler_jwt_user', JSON.stringify(mockUser));
+    localStorage.setItem('scheduler_jwt_refresh', 'refresh-token');
+
+    // 거의 만료된 토큰 생성 (5초 남음)
+    const header = Buffer.from(JSON.stringify({ alg: 'HS256' })).toString('base64');
+    const expTime = Math.floor(Date.now() / 1000) + 5; 
+    const payload = Buffer.from(JSON.stringify({ exp: expTime })).toString('base64');
+    const mockAccessToken = `${header}.${payload}.sig`;
+    localStorage.setItem('scheduler_jwt_access', mockAccessToken);
+
+    // fetch 모킹 (refresh 성공)
+    const updatedUser = { userId: 'u-1', username: 'test@test.com', displayName: '홍길동', provider: 'local' };
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({ accessToken: 'new-acc', refreshToken: 'new-ref', user: updatedUser })
     });
 
-    afterEach(() => {
-      process.env = originalEnv;
+    const session = await service.getCurrentSession();
+    expect(session?.username).toBe('test@test.com');
+    expect(localStorage.getItem('scheduler_jwt_access')).toBe('new-acc');
+  });
+
+  test('getCurrentSession - AccessToken이 존재하지 않는 경우 RefreshToken을 통한 자동 갱신 시도 성공', async () => {
+    const mockUser = { id: 'u-1', username: 'test@test.com', displayName: '홍길동', provider: 'local' };
+    localStorage.setItem('scheduler_jwt_user', JSON.stringify(mockUser));
+    localStorage.setItem('scheduler_jwt_refresh', 'refresh-token');
+
+    const updatedUser = { userId: 'u-1', username: 'test@test.com', displayName: '홍길동', provider: 'local' };
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({ accessToken: 'new-acc', refreshToken: 'new-ref', user: updatedUser })
     });
 
-    test('getAuthService - 브라우저 환경이 아닐 시 LocalStorageAuthService를 반환해야 함', () => {
-      (isBrowser.check as jest.Mock).mockReturnValue(false);
-      const service = getAuthService();
-      expect(service).toBeInstanceOf(LocalStorageAuthService);
+    const session = await service.getCurrentSession();
+    expect(session?.username).toBe('test@test.com');
+    expect(localStorage.getItem('scheduler_jwt_access')).toBe('new-acc');
+  });
+
+  test('getCurrentSession - 갱신 실패 시 세션을 모두 클리어하고 null을 반환해야 함', async () => {
+    localStorage.setItem('scheduler_jwt_user', JSON.stringify({ id: 'u-1' }));
+    localStorage.setItem('scheduler_jwt_refresh', 'refresh-token');
+
+    // refresh 실패 응답
+    mockFetch.mockResolvedValue({ ok: false });
+
+    const session = await service.getCurrentSession();
+    expect(session).toBeNull();
+    expect(localStorage.getItem('scheduler_jwt_user')).toBeNull();
+  });
+
+  test('getCurrentSession - JSON 파싱 실패 등 예외 발생 시 refresh를 시도하여 성공하면 복구해야 함', async () => {
+    localStorage.setItem('scheduler_jwt_user', 'invalid-json');
+    localStorage.setItem('scheduler_jwt_refresh', 'refresh-token');
+
+    const updatedUser = { userId: 'u-2', username: 'recovered@test.com', displayName: '복구', provider: 'local' };
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({ accessToken: 'new-acc', refreshToken: 'new-ref', user: updatedUser })
     });
 
-    test('getAuthService - API 키 환경 변수가 없을 시 LocalStorageAuthService를 반환해야 함', () => {
-      (isBrowser.check as jest.Mock).mockReturnValue(true);
-      delete process.env.NEXT_PUBLIC_SUPABASE_URL;
-      delete process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+    const session = await service.getCurrentSession();
+    expect(session?.username).toBe('recovered@test.com');
+  });
 
-      const service = getAuthService();
-      expect(service).toBeInstanceOf(LocalStorageAuthService);
+  test('getCurrentSession - JSON 파싱 예외 발생 시 refresh 마저 실패하면 null을 리턴해야 함', async () => {
+    localStorage.setItem('scheduler_jwt_user', 'invalid-json');
+    localStorage.setItem('scheduler_jwt_refresh', 'refresh-token');
+
+    mockFetch.mockResolvedValue({ ok: false });
+
+    const session = await service.getCurrentSession();
+    expect(session).toBeNull();
+  });
+
+  test('register - 성공 시 신규 토큰 한 쌍을 받아 로컬 스토리지에 저장하고 세션을 반환해야 함', async () => {
+    const mockUserResponse = { id: 'new-u', username: 'reg@test.com', displayName: '가입자', provider: 'local', createdAt: '2026-05-20' };
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({ accessToken: 'acc-t', refreshToken: 'ref-t', user: mockUserResponse })
     });
 
-    test('getAuthService - API 키 환경 변수가 지정되어 있을 시 SupabaseAuthService를 반환해야 함', () => {
-      (isBrowser.check as jest.Mock).mockReturnValue(true);
-      process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://example.supabase.co';
-      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY = 'anon-key';
+    const session = await service.register({ username: 'reg@test.com', password: '123', displayName: '가입자' });
+    expect(session.id).toBe('new-u');
+    expect(localStorage.getItem('scheduler_jwt_access')).toBe('acc-t');
+  });
 
-      const service = getAuthService();
-      expect(service).toBeInstanceOf(SupabaseAuthService);
+  test('register - 실패 시 API 에러 메시지를 throw 해야 함', async () => {
+    mockFetch.mockResolvedValue({
+      ok: false,
+      json: async () => ({ error: '아이디 중복' })
     });
+
+    await expect(service.register({ username: '', displayName: '' })).rejects.toThrow('아이디 중복');
+  });
+
+  test('login - 성공 시 토큰 한 쌍을 저장하고 로그인 완료된 세션을 반환해야 함', async () => {
+    const mockUserResponse = { id: 'u-1', username: 'login@test.com', displayName: '로그인남', provider: 'local', createdAt: '2026-05-20' };
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({ accessToken: 'acc-t', refreshToken: 'ref-t', user: mockUserResponse })
+    });
+
+    const session = await service.login({ username: 'login@test.com', password: '123' });
+    expect(session.username).toBe('login@test.com');
+    expect(localStorage.getItem('scheduler_jwt_access')).toBe('acc-t');
+  });
+
+  test('login - 실패 시 API 에러 메시지를 throw 해야 함', async () => {
+    mockFetch.mockResolvedValue({
+      ok: false,
+      json: async () => ({ error: '비밀번호 불일치' })
+    });
+
+    await expect(service.login({ username: '', password: '' })).rejects.toThrow('비밀번호 불일치');
+  });
+
+  test('socialLogin - 제공자별 모의 소셜 로그인 JWT 및 세션을 즉시 제공해야 함', async () => {
+    const gSession = await service.socialLogin('google');
+    expect(gSession.provider).toBe('google');
+    expect(gSession.displayName).toBe('구글 프리미엄 유저');
+    expect(localStorage.getItem('scheduler_jwt_access')).toBeDefined();
+
+    const kSession = await service.socialLogin('kakao');
+    expect(kSession.provider).toBe('kakao');
+
+    const nSession = await service.socialLogin('naver');
+    expect(nSession.provider).toBe('naver');
+  });
+
+  test('logout - 모든 토큰 정보를 초기화해야 함', async () => {
+    localStorage.setItem('scheduler_jwt_access', 'acc');
+    localStorage.setItem('scheduler_jwt_refresh', 'ref');
+
+    await service.logout();
+    expect(service.getAccessToken()).toBeNull();
+    expect(localStorage.getItem('scheduler_jwt_refresh')).toBeNull();
+  });
+
+  test('getAuthService 팩토리 테스트', () => {
+    const s1 = getAuthService();
+    const s2 = getAuthService();
+    expect(s1).toBe(s2); // 싱글톤 보장 검증
   });
 });
