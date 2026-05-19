@@ -4,7 +4,6 @@
 [build]
   base = "scheduler"
   command = "npm run build"
-  publish = ".next"
 
 [build.environment]
   SECRETS_SCAN_ENABLED = "false"
