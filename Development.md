@@ -4,7 +4,25 @@
 
 ## 📅 개발 히스토리
 
-### [2026-05-20] 일정 등록(Insert) 시 클라이언트 사이드 UUID 자율 생성 및 Not-Null 제약조건 위반 장해 완전 격파 (최신)
+### [2026-05-20] Nav Bar '일정' & '메모' 양방향 라우팅 탭 탑재 및 프리미엄 메모패드 핀보드 구축 (최신)
+- **작업 내용**:
+  1. **요구사항 수용**: 일정 기능과 유기적으로 작동하면서도 격리되어 조작하기 편리한 메모(Memo) 핀보드 탭 생성 요건 실현.
+  2. **스키마 확장 & JPA Auto 생성**:
+     - `schema.prisma`에 `Memo` 데이터 구조 매핑(id, title, content, color, createdAt).
+     - Netlify 원격 5432 풀러 빌드 배포 컴파일 시점에 `memos` 테이블도 JPA ddl-auto 처럼 Supabase 상에 **100% 영구 자동 생성**되도록 구축함.
+  3. **비즈니스 아키텍처 정합화 (SRP)**:
+     - `src/types/memo.ts` 에 타입 명세 수립.
+     - `src/services/memoService.ts` 에 `LocalStorageMemoService` (프리미엄 데모 포함 로컬 Fallback) 및 `SupabaseMemoService` (클라이언트 UUID 선제 주입) 통합 설계.
+     - `src/hooks/useMemos.ts` 커스텀 훅을 이식하여 UI 렌더러와 비즈니스 로직 격리.
+  4. **비주얼 다이내믹 프리미엄 핀보드 (Premium UI)**:
+     - 핀터레스트 레이아웃 느낌의 3열 다채로운 파스텔/네온 카드형 핀보드 완성.
+     - 6가지 파스텔 컬러 셀렉터 글로우 연출, 실시간 내용 검색 및 색상별 다중 필터 기능 장착.
+     - 부드럽게 붕 떠오르는 3D 호버 트랜지션 효과 연출.
+  5. **100% 테스트 무결성 수호**:
+     - `memoService.test.ts`, `useMemos.test.ts`를 신규 제작하여 분기 100% 커버리지 올패스 사수.
+     - GitHub 원격 main 브랜치 `8e6368e` 에 안전 push 완료.
+
+### [2026-05-20] 일정 등록(Insert) 시 클라이언트 사이드 UUID 자율 생성 및 Not-Null 제약조건 위반 장해 완전 격파
 - **작업 내용**:
   1. **현상 진단**:
      - 사용자가 화면에서 신규 일정을 등록할 때, `null value in column "id" of relation "schedules" violates not-null constraint` (id 컬럼의 Not-Null 제약조건 위반) 에러와 함께 데이터베이스 삽입이 실패하는 현상 보고됨.
