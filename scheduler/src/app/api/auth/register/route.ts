@@ -56,6 +56,16 @@ export async function POST(request: Request) {
     const accessToken = JwtService.generateAccessToken(payload);
     const refreshToken = JwtService.generateRefreshToken(payload);
 
+    // 4. 리프레시 토큰을 Supabase PostgreSQL에 저장하여 추적 검증 및 갱신 보증 수호 (24시간 만료 시간과 함께 삽입)
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24시간 뒤
+    await prisma.refreshToken.create({
+      data: {
+        token: refreshToken,
+        userId: user.id,
+        expiresAt
+      }
+    });
+
     return NextResponse.json({
       accessToken,
       refreshToken,

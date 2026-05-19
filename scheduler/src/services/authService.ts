@@ -208,6 +208,16 @@ export class JwtAuthService implements IAuthService {
   }
 
   async logout(): Promise<void> {
+    if (isBrowser.check()) {
+      const refreshToken = localStorage.getItem(this.REFRESH_TOKEN_KEY);
+      if (refreshToken) {
+        await fetch('/api/auth/logout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ refreshToken })
+        }).catch(() => {});
+      }
+    }
     this.clearTokens();
   }
 }

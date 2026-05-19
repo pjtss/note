@@ -200,6 +200,12 @@ describe('JwtAuthService 테스트', () => {
     localStorage.setItem('scheduler_jwt_access', 'acc');
     localStorage.setItem('scheduler_jwt_refresh', 'ref');
 
+    // fetch 모킹 (logout 성공)
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({ success: true })
+    });
+
     await service.logout();
     expect(service.getAccessToken()).toBeNull();
     expect(localStorage.getItem('scheduler_jwt_refresh')).toBeNull();
