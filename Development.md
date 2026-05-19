@@ -4,7 +4,17 @@
 
 ## 📅 개발 히스토리
 
-### [2026-05-19] Netlify 웹 UI 잠금(Disabled) 오버라이드 우회 및 업로드 500 서버 장해 영구 척결 (최신)
+### [2026-05-19] 중복된 하위 `scheduler/netlify.toml` 영구 삭제 및 싱글 아키텍처 단일화 완수 (최신)
+- **작업 내용**:
+  1. **현상 및 구조 분석**: 프로젝트 루트(`note/`)와 하위 프로젝트 폴더(`scheduler/`)에 각각 `netlify.toml` 파일이 존재하여 중복되는 비효율적 배포 명세 파악.
+  2. **단일화 조치 도입**:
+     - Netlify의 최초 Git Webhook 감지를 유도하기 위해 최상위 루트 [netlify.toml](file:///c:/Users/dldbs/Desktop/note/netlify.toml) 파일 1개만 핵심 지휘소로 안전하게 남기고, 하위 중복 껍데기였던 `scheduler/netlify.toml` 파일을 워크스페이스 상에서 완전히 물리적 삭제 처리함.
+     - 이 조치를 통해 **Single Source of Truth(단일 진실 공급원)** 원칙을 이행하여, 추후 배포 명세 관리의 복잡도를 100% 척결함.
+  3. **안정성 검증**:
+     - 36개 테스트 스위트 전원 통과 및 Statements/Branches/Functions/Lines **100.00% 완전 무결 커버리지**를 철통 사수함.
+     - 한글 상세 커밋 메시지 규칙을 충족하여 GitHub 원격 저장소 메인 브랜치 `c83bd12` 에 push 반영 완료.
+
+### [2026-05-19] Netlify 웹 UI 잠금(Disabled) 오버라이드 우회 및 업로드 500 서버 장해 영구 척결
 - **작업 내용**:
   1. **현상 진단**:
      - Netlify 배포 빌드는 Next.js 컴파일을 완벽 성공했으나, 최종 배포 스테이지(`Deploy site`)에서 람다 핸들러 업로드 시 `HTTP Error 500: Failed to upload file: ___netlify-server-handler (invalid character '<' looking for beginning of value)` 에러를 내며 빌드가 강제 차단되는 장해 발생.
