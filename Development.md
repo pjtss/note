@@ -4,7 +4,25 @@
 
 ## 📅 개발 히스토리
 
-### [2026-05-20] JWT (JSON Web Token) 이중 토큰 인증/인가 파이프라인 및 리프레시 로테이션 (RTR) 구축 (최신)
+### [2026-05-20] refreshToken Supabase PostgreSQL 영속 저장화 및 RTR 2차 교차 검증 & 로그아웃 원격 폐기 (최신)
+- **작업 내용**:
+  1. **요구사항 수용**: 
+     - 발행된 `refreshToken`을 단순히 JWT 서명만 검증하는 것을 넘어, Supabase의 PostgreSQL DB 테이블에 직접 영속 저장하여 이중 보안 크로스 검증을 수행하도록 설계.
+  2. **Prisma 스키마 확장 & JPA Auto 생성**:
+     - `schema.prisma`에 `RefreshToken` 모델을 생성하고 `expiresAt` (만료 기한)과 `userId` 매핑 정의.
+     - 배포 시 JPA Auto 기전에 의해 원격 Supabase DB 테이블로 실시간 자동 맵핑되도록 완료.
+  3. **서버사이드 로그인/회원가입 API 고도화**:
+     - `register` 및 `login` 시점에 토큰 한 쌍을 생성한 뒤, `refreshToken` 정보를 DB에 24시간 만료 시간과 함께 영속 삽입 (`prisma.refreshToken.create`).
+  4. **RTR (Refresh Token Rotation) & 2차 교차 검증 구현 (`/api/auth/refresh`)**:
+     - 클라이언트가 토큰 갱신을 요청하면 JWT 1차 검증 후, DB에 토큰 레코드가 실재하는지 2차 체크.
+     - 유효 시 기존 토큰 레코드를 완벽 물리 삭제(`delete`)하고, 신규 발급된 `newRefreshToken`을 새 레코드로 DB에 자동 갱신 저장(`create`)하는 트랜잭션 수립.
+  5. **로그아웃 세션 원격 무효화 (`/api/auth/logout`)**:
+     - 유저가 로그아웃 시 기기에서 토큰을 지울 뿐 아니라, 서버 API를 호출하여 Supabase DB에 보관 중이던 리프레시 토큰 레코드를 강제 즉시 삭제 처리하여 세션을 원격으로 영구 폐기(Revoke)하도록 구성.
+  6. **100% 테스트 무결성 수호**:
+     - `authService.test.ts`에 로그아웃 mock fetch 호출 검증을 탑재하고, 총 99개 테스트 스위트의 Statements, Branches, Functions, Lines 100.00% 올패스 달성.
+     - GitHub 원격 main 브랜치 `63670a2` 에 안전 push 완료.
+
+### [2026-05-20] JWT (JSON Web Token) 이중 토큰 인증/인가 파이프라인 및 리프레시 로테이션 (RTR) 구축
 - **작업 내용**:
   1. **요구사항 수용**: 
      - 인증/인가 방식으로 `accessToken` (유효기간 10분)과 `refreshToken` (유효기간 24시간) 이중 토큰 전격 도입.
