@@ -4,7 +4,21 @@
 
 ## 📅 개발 히스토리
 
-### [2026-05-19] JPA 스타일 `ddl-auto` 데이터베이스 스키마 자동 생성 및 영구 동기화 파이프라인 완결 (최신)
+### [2026-05-19] Netlify 웹 UI 잠금(Disabled) 오버라이드 우회 및 업로드 500 서버 장해 영구 척결 (최신)
+- **작업 내용**:
+  1. **현상 진단**:
+     - Netlify 배포 빌드는 Next.js 컴파일을 완벽 성공했으나, 최종 배포 스테이지(`Deploy site`)에서 람다 핸들러 업로드 시 `HTTP Error 500: Failed to upload file: ___netlify-server-handler (invalid character '<' looking for beginning of value)` 에러를 내며 빌드가 강제 차단되는 장해 발생.
+     - 사용자의 Netlify `Build settings` 캡처를 분석한 결과, 웹 UI 입력창이 회색(Disabled)으로 락인되어 `scheduler/.next` 오버라이딩 캐시 값이 강제 고정된 기형적 흐름 진단.
+  2. **원인 규명**:
+     - Netlify에 `netlify.toml` 설정 파일이 제공되면 웹 대시보드의 값은 편집 불가(Disabled) 상태가 됨.
+     - 이 시점에 `netlify.toml` 에 `publish = ".next"` 처럼 빌드 폴더를 수동 명시해버리면, `@netlify/plugin-nextjs` 가 자동으로 엣지 람다 아웃풋(`.netlify/functions-internal`)을 맵핑 및 업로드하려 할 때 락이 걸려 경로가 이중 꼬임(`scheduler/scheduler/.next`)을 일으켜 업로드 500 실패로 이어짐을 완벽히 규명.
+  3. **완벽 해결책 수립 및 도입**:
+     - 최상위 루트 [netlify.toml](file:///c:/Users/dldbs/Desktop/note/netlify.toml) 및 프로젝트 하위 [scheduler/netlify.toml](file:///c:/Users/dldbs/Desktop/note/scheduler/netlify.toml) 양쪽 파일 모두에서 **`publish = ".next"` 지시어를 통째로 영구 삭제**함.
+     - `publish` 속성을 지워줌으로써 Netlify Next.js 런타임 플러그인이 빌드 결과물을 스스로 점검하고 배포 엣지 함수 경로를 **100% 자율적이고 정합되게 자동 해결**하도록 아키텍처 개방.
+  4. **깃 원격 저장소 반영**:
+     - 수정 사항을 **한글 상세 깃 커밋 규칙**을 준수하여 원격 저장소 `7f933e0` 브랜치에 안전 동기화 완수 완료.
+
+### [2026-05-19] JPA 스타일 `ddl-auto` 데이터베이스 스키마 자동 생성 및 영구 동기화 파이프라인 완결
 - **작업 내용**:
   1. **요구사항 정의**: 사용자가 매번 로컬 명령어를 기동하거나 SQL을 복사-붙여넣기 할 필요 없이, **JPA의 `ddl-auto: update` 처럼 배포와 즉시 데이터베이스 스키마(schedules 테이블)가 100% 자동 관리/생성**되도록 아키텍처 자동화 요구 수렴.
   2. **크로스 플랫폼 자동 동기화 조율 엔진(`db-sync.js`) 도입**:
