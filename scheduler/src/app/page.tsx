@@ -84,10 +84,13 @@ export default function Home() {
   const [selectedFont, setSelectedFont] = useState<string>('Pretendard');
   const fontOptions = [
     { name: '💻 프리텐다드 (모던)', value: 'Pretendard', css: "'Pretendard', -apple-system, sans-serif" },
+    { name: '🌟 Noto Sans KR (필수)', value: 'Noto Sans KR', css: "'Noto Sans KR', sans-serif" },
     { name: '✍️ 나눔고딕 (단정)', value: 'Nanum Gothic', css: "'Nanum Gothic', sans-serif" },
     { name: '📖 리디바탕 (도서)', value: 'Ridi Batang', css: "'RIDIBatang', Georgia, serif" },
     { name: '🎨 바른히피 (키치)', value: 'Gamja Flower', css: "'Gamja Flower', cursive" },
-    { name: '🖋️ 손글씨 (감성)', value: 'Nanum Pen Script', css: "'Nanum Pen Script', cursive" }
+    { name: '🖋️ 손글씨 (감성)', value: 'Nanum Pen Script', css: "'Nanum Pen Script', cursive" },
+    { name: '👶 배달의민족 주아 (동글)', value: 'Jua', css: "'Jua', sans-serif" },
+    { name: '📝 고운돋움 (따뜻)', value: 'Gowun Dodum', css: "'Gowun Dodum', sans-serif" }
   ];
 
   // 선택한 글꼴의 실제 CSS 폰트 패밀리 값 획득 헬퍼
@@ -101,15 +104,15 @@ export default function Home() {
 
   // 프리미엄 파스텔 & 세련된 오션 마린 테마 색상 정의 (하늘, 푸른, 바다색 계열 대폭 강화)
   const pastelColors = [
-    { name: '밀크바닐라', hex: '#fffbeb' },    // 감성 코지 옐로우 (라이트)
-    { name: '스카이블루', hex: '#e0f2fe' },    // 화사한 아침 하늘색 (라이트)
-    { name: '소다레인', hex: '#bde0fe' },      // 청량한 청하늘색 (라이트)
-    { name: '산호바다', hex: '#ccfbf1' },      // 세련되고 맑은 민트 바다색 (라이트)
-    { name: '소프트오션', hex: '#bae6fd' },    // 화사하고 은은한 파스텔 오션블루 (라이트)
-    { name: '소다시안', hex: '#e0f7fa' },      // 맑고 청명한 시안 파스텔 바다색 (라이트)
-    { name: '소프트마린', hex: '#dbeafe' },    // 세련되고 아늑한 파스텔 로열블루 (라이트)
-    { name: '연라벤더', hex: '#e8e8ff' },      // 은은한 안개 보라색 (라이트)
-    { name: '체리블러썸', hex: '#ffe5ec' }     // 부드러운 벚꽃 핑크색 (라이트)
+    { name: '💛 밀크바닐라', hex: '#fffbeb' },    // 감성 코지 옐로우 (라이트)
+    { name: '🩵 스카이블루', hex: '#e0f2fe' },    // 화사한 아침 하늘색 (라이트)
+    { name: '💙 소다레인', hex: '#bde0fe' },      // 청량한 청하늘색 (라이트)
+    { name: '💚 산호바다', hex: '#ccfbf1' },      // 세련되고 맑은 민트 바다색 (라이트)
+    { name: '🌊 소프트오션', hex: '#bae6fd' },    // 화사하고 은은한 파스텔 오션블루 (라이트)
+    { name: '💎 소다시안', hex: '#e0f7fa' },      // 맑고 청명한 시안 파스텔 바다색 (라이트)
+    { name: '💠 소프트마린', hex: '#dbeafe' },    // 세련되고 아늑한 파스텔 로열블루 (라이트)
+    { name: '💜 연라벤더', hex: '#e8e8ff' },      // 은은한 안개 보라색 (라이트)
+    { name: '🩷 체리블러썸', hex: '#ffe5ec' }     // 부드러운 벚꽃 핑크색 (라이트)
   ];
 
   // 어두운 색상 판별 헬퍼 함수 (기존 구형 진한 색상 메모에 대한 하위 호환성 전용)
@@ -117,6 +120,110 @@ export default function Home() {
     const darkColors = ['#0077b6', '#1d3557', '#2b2d42', '#118ab2', '#4ea8de'];
     return darkColors.includes(colorHex);
   };
+
+  // 이미 알림이 전송된 일정 ID 캐시 (새로고침 시 중복 방지용 영속화)
+  const [notifiedIds, setNotifiedIds] = useState<string[]>([]);
+
+  // 서비스 워커 등록 및 알림 권한 획득 처리 (Web Push A)
+  useEffect(() => {
+    if ('serviceWorker' in navigator && 'Notification' in window) {
+      navigator.serviceWorker.register('/sw.js')
+        .then((reg) => {
+          console.log('서비스 워커 등록 성공:', reg.scope);
+        })
+        .catch((err) => {
+          console.error('서비스 워커 등록 실패:', err);
+        });
+
+      // 브라우저 최초 마운트 시 알림 권한 스마트 요청
+      if (Notification.permission === 'default') {
+        Notification.requestPermission().then((permission) => {
+          console.log('브라우저 알림 권한 부여 결과:', permission);
+        });
+      }
+    }
+  }, []);
+
+  // 알림 캐시 데이터 복원
+  useEffect(() => {
+    const savedNotified = localStorage.getItem('notified_schedule_ids');
+    if (savedNotified) {
+      try {
+        setNotifiedIds(JSON.parse(savedNotified));
+      } catch (e) {
+        // 복구 실패 무시
+      }
+    }
+  }, []);
+
+  // 60초 주기 일정 당일/당시 백그라운드 푸시 알림 체크 엔진 (옵션 A)
+  useEffect(() => {
+    if (!mounted || !user) return;
+
+    const checkSchedulesForPush = () => {
+      if (Notification.permission !== 'granted') return;
+
+      const now = new Date();
+      const nowYear = now.getFullYear();
+      const nowMonth = now.getMonth();
+      const nowDate = now.getDate();
+      const nowHours = now.getHours();
+      const nowMinutes = now.getMinutes();
+
+      schedules.forEach((schedule) => {
+        // 이미 알림이 전송되었거나 완료된 일정은 건너뜀
+        if (notifiedIds.includes(schedule.id) || schedule.isCompleted) return;
+
+        // 일정 시작 시간 포맷: YYYY-MM-DDTHH:mm
+        const startTimeStr = schedule.startTime;
+        if (!startTimeStr) return;
+
+        const schedTime = new Date(startTimeStr);
+        if (isNaN(schedTime.getTime())) return;
+
+        const schedYear = schedTime.getTime() ? schedTime.getFullYear() : 0;
+        const schedMonth = schedTime.getTime() ? schedTime.getMonth() : 0;
+        const schedDate = schedTime.getTime() ? schedTime.getDate() : 0;
+        const schedHours = schedTime.getTime() ? schedTime.getHours() : 0;
+        const schedMinutes = schedTime.getTime() ? schedTime.getMinutes() : 0;
+
+        // 정확히 현재 분에 도달했는지 검증
+        const isTimeMatch = 
+          nowYear === schedYear &&
+          nowMonth === schedMonth &&
+          nowDate === schedDate &&
+          nowHours === schedHours &&
+          nowMinutes === schedMinutes;
+
+        if (isTimeMatch) {
+          // 서비스 워커를 통해 웹 푸시 노출
+          navigator.serviceWorker.ready.then((registration) => {
+            const importanceEmoji = schedule.category === 'Important' ? '🚨 [중요 일정] ' : '📅 ';
+            registration.showNotification(`${importanceEmoji}Antigravity 스케줄 알림`, {
+              body: `"${schedule.title}" 일정이 지금 시작되었습니다!\n⏰ 시간: ${schedule.startTime.replace('T', ' ')}`,
+              icon: '/next.svg',
+              badge: '/next.svg',
+              vibrate: [200, 100, 200],
+              tag: `sched-${schedule.id}`,
+              renotify: true,
+              data: { scheduleId: schedule.id }
+            } as any);
+          });
+
+          // 중복 알림 방지 캐시 업데이트
+          const updatedNotified = [...notifiedIds, schedule.id];
+          setNotifiedIds(updatedNotified);
+          localStorage.setItem('notified_schedule_ids', JSON.stringify(updatedNotified));
+        }
+      });
+    };
+
+    // 마운트 후 즉시 검사하고, 30초마다 정밀 스캐닝을 유지하여 1분 주기를 빈틈없이 캐치
+    checkSchedulesForPush();
+    const intervalId = setInterval(checkSchedulesForPush, 30000);
+
+    return () => clearInterval(intervalId);
+  }, [mounted, user, schedules, notifiedIds]);
 
   useEffect(() => {
     // 앱 기동 시 마지막에 갱신된 글꼴 설정 자동 복원
@@ -349,7 +456,7 @@ export default function Home() {
     <>
       <style dangerouslySetInnerHTML={{ __html: `
         @import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css");
-        @import url("https://fonts.googleapis.com/css2?family=Gamja+Flower&family=Nanum+Gothic:wght@400;700&family=Nanum+Pen+Script&display=swap");
+        @import url("https://fonts.googleapis.com/css2?family=Gamja+Flower&family=Nanum+Gothic:wght@400;700&family=Nanum+Pen+Script&family=Noto+Sans+KR:wght@300;400;500;700&family=Jua&family=Gowun+Dodum&display=swap");
         @font-face {
           font-family: 'RIDIBatang';
           src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_twelve@1.1/RIDIBatang.woff') format('woff');
