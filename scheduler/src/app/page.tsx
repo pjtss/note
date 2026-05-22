@@ -104,13 +104,19 @@ export default function Home() {
     { name: '밀크바닐라', hex: '#fffbeb' },    // 감성 코지 옐로우 (라이트)
     { name: '스카이블루', hex: '#e0f2fe' },    // 화사한 아침 하늘색 (라이트)
     { name: '소다레인', hex: '#bde0fe' },      // 청량한 청하늘색 (라이트)
-    { name: '산호바다', hex: '#a8dadc' },      // 세련된 민트 바다색 (라이트)
-    { name: '오션블루', hex: '#4ea8de' },      // 영롱한 몰디브 바다색 (라이트)
-    { name: '딥블루', hex: '#0077b6' },        // 깊은 지중해 푸른색 (다크)
-    { name: '마린네이비', hex: '#1d3557' },    // 세련된 크루즈 네이비색 (다크)
+    { name: '산호바다', hex: '#ccfbf1' },      // 세련되고 맑은 민트 바다색 (라이트)
+    { name: '소프트오션', hex: '#bae6fd' },    // 화사하고 은은한 파스텔 오션블루 (라이트)
+    { name: '소다시안', hex: '#e0f7fa' },      // 맑고 청명한 시안 파스텔 바다색 (라이트)
+    { name: '소프트마린', hex: '#dbeafe' },    // 세련되고 아늑한 파스텔 로열블루 (라이트)
     { name: '연라벤더', hex: '#e8e8ff' },      // 은은한 안개 보라색 (라이트)
-    { name: '체리블러썸', hex: '#ffe5ec' }     // 부드러운 분홍빛 (라이트)
+    { name: '체리블러썸', hex: '#ffe5ec' }     // 부드러운 벚꽃 핑크색 (라이트)
   ];
+
+  // 어두운 색상 판별 헬퍼 함수 (기존 구형 진한 색상 메모에 대한 하위 호환성 전용)
+  const checkIfDarkColor = (colorHex: string) => {
+    const darkColors = ['#0077b6', '#1d3557', '#2b2d42', '#118ab2', '#4ea8de'];
+    return darkColors.includes(colorHex);
+  };
 
   useEffect(() => {
     // 앱 기동 시 마지막에 갱신된 글꼴 설정 자동 복원
@@ -295,7 +301,7 @@ export default function Home() {
 
       setMemoTitle('');
       setMemoContent('');
-      setMemoColor('#ffd166');
+      setMemoColor('#fffbeb');
     } catch (err) {
       // 에러 자동 처리
     }
@@ -306,7 +312,7 @@ export default function Home() {
     setEditingMemoId(memo.id);
     setMemoTitle(memo.title);
     setMemoContent(memo.content || '');
-    setMemoColor(memo.color || '#ffd166');
+    setMemoColor(memo.color || '#fffbeb');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -315,7 +321,7 @@ export default function Home() {
     setEditingMemoId(null);
     setMemoTitle('');
     setMemoContent('');
-    setMemoColor('#ffd166');
+    setMemoColor('#fffbeb');
   };
 
   // 한국어 날짜 포맷터
@@ -959,7 +965,7 @@ export default function Home() {
                               title={color.name}
                             >
                               {memoColor === color.hex && (
-                                <i className={`bi bi-check-lg ${color.hex === '#2b2d42' ? 'text-white' : 'text-dark'}`} style={{ fontSize: '0.8rem' }}></i>
+                                <i className={`bi bi-check-lg ${checkIfDarkColor(color.hex) ? 'text-white' : 'text-dark'}`} style={{ fontSize: '0.8rem' }}></i>
                               )}
                             </button>
                           ))}
@@ -1052,7 +1058,7 @@ export default function Home() {
                     ) : (
                       <div className="row g-3" style={{ minHeight: '300px' }}>
                         {filteredMemos.map((memo) => {
-                          const isDarkColor = memo.color === '#0077b6' || memo.color === '#1d3557' || memo.color === '#2b2d42' || memo.color === '#118ab2';
+                          const isDarkColor = checkIfDarkColor(memo.color || '#fffbeb');
                           return (
                             <div key={memo.id} className="col-md-6 col-xl-6">
                               <div
@@ -1184,9 +1190,9 @@ export default function Home() {
             style={{
               maxWidth: '650px',
               backgroundColor: selectedMemo.color || '#fffbeb',
-              color: (selectedMemo.color === '#0077b6' || selectedMemo.color === '#1d3557' || selectedMemo.color === '#2b2d42' || selectedMemo.color === '#118ab2') ? '#ffffff' : '#2b2d42',
+              color: checkIfDarkColor(selectedMemo.color || '#fffbeb') ? '#ffffff' : '#2b2d42',
               boxShadow: '0 25px 60px rgba(0, 0, 0, 0.45)',
-              borderTop: `6px solid ${(selectedMemo.color === '#0077b6' || selectedMemo.color === '#1d3557' || selectedMemo.color === '#2b2d42' || selectedMemo.color === '#118ab2') ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.2)'}`,
+              borderTop: `6px solid ${checkIfDarkColor(selectedMemo.color || '#fffbeb') ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.2)'}`,
               fontFamily: getSelectedFontCss()
             }}
             onClick={(e) => e.stopPropagation()}
@@ -1228,7 +1234,7 @@ export default function Home() {
                 fontSize: '0.95rem'
               }}
             >
-              <MarkdownRenderer content={selectedMemo.content} isDarkColor={selectedMemo.color === '#0077b6' || selectedMemo.color === '#1d3557' || selectedMemo.color === '#2b2d42' || selectedMemo.color === '#118ab2'} />
+              <MarkdownRenderer content={selectedMemo.content} isDarkColor={checkIfDarkColor(selectedMemo.color || '#fffbeb')} />
             </div>
 
             {/* Modal Footer Controls */}
