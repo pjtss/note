@@ -238,6 +238,309 @@ export default function Home() {
     localStorage.setItem('selected_memo_font', fontValue); // 새로운 폰트 선택 시 로컬 스토리지에 갱신 저장
   };
 
+  // ====================================================
+  // 🛠️ 10대 유틸리티 추가 기능 전용 상태 및 헬퍼 함수 선언
+  // ====================================================
+  
+  // 1. 뽀모도로 타이머 상태
+  const [pomodoroSeconds, setPomodoroSeconds] = useState(1500); // 25분 기본
+  const [pomodoroIsRunning, setPomodoroIsRunning] = useState(false);
+  const [pomodoroMode, setPomodoroMode] = useState<'focus' | 'break'>('focus');
+  const [pomodoroCustomFocus, setPomodoroCustomFocus] = useState(25);
+  const [pomodoroCustomBreak, setPomodoroCustomBreak] = useState(5);
+  const [showPomodoroWidget, setShowPomodoroWidget] = useState(false);
+  
+  // 2. 실시간 시간 갱신 틱 (D-Day 등 실시간 표기용)
+  const [timeRefreshTicker, setTimeRefreshTicker] = useState(0);
+
+  // 3. 플로팅 토스트 피드백 상태
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // 토스트 피드백 노출 함수
+  const showToast = (message: string) => {
+    setToastMessage(message);
+    setTimeout(() => {
+      setToastMessage(null);
+    }, 2000);
+  };
+
+  // 실시간 갱신 틱 이펙트 (1분 주기)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setTimeRefreshTicker((prev) => prev + 1);
+    }, 60000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // 뽀모도로 타이머 로직 이펙트
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (pomodoroIsRunning && pomodoroSeconds > 0) {
+      timer = setInterval(() => {
+        setPomodoroSeconds((prev) => prev - 1);
+      }, 1000);
+    } else if (pomodoroIsRunning && pomodoroSeconds === 0) {
+      const nextMode = pomodoroMode === 'focus' ? 'break' : 'focus';
+      const bodyText = nextMode === 'focus' 
+        ? '휴식 시간이 완료되었습니다! 다시 집중에 집중해 보세요.' 
+        : '집중 시간이 완료되었습니다! 5분간 편안히 휴식을 취하세요.';
+
+      if ('Notification' in window && Notification.permission === 'granted') {
+        navigator.serviceWorker.ready.then((registration) => {
+          registration.showNotification(`🍅 뽀모도로 타이머 - ${pomodoroMode === 'focus' ? '집중 완료!' : '휴식 완료!'}`, {
+            body: bodyText,
+            icon: '/next.svg',
+            badge: '/next.svg',
+            tag: 'pomodoro-alert',
+            renotify: true
+          } as any);
+        });
+      }
+
+      try {
+        const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+        const oscillator = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+        oscillator.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+        oscillator.type = 'sine';
+        oscillator.frequency.setValueAtTime(880, audioCtx.currentTime);
+        gainNode.gain.setValueAtTime(0.5, audioCtx.currentTime);
+        oscillator.start();
+        oscillator.stop(audioCtx.currentTime + 0.8);
+      } catch (e) {
+        // AudioContext 미지원 브라우저 대응
+      }
+
+      alert(`🍅 뽀모도로 타이머: ${pomodoroMode === 'focus' ? '집중 완료!' : '휴식 완료!'}\n${bodyText}`);
+
+      setPomodoroMode(nextMode);
+      setPomodoroSeconds(nextMode === 'focus' ? pomodoroCustomFocus * 60 : pomodoroCustomBreak * 60);
+      setPomodoroIsRunning(false);
+    }
+    return () => clearInterval(timer);
+  }, [pomodoroIsRunning, pomodoroSeconds, pomodoroMode, pomodoroCustomFocus, pomodoroCustomBreak]);
+
+  // D-Day & 남은 시간 실시간 계산 헬퍼
+  const calculateDDay = (startTimeStr: string, endTimeStr: string, isCompleted: boolean) => {
+    if (isCompleted) return { text: '완료', colorClass: 'bg-secondary text-white' };
+    const now = Date.now();
+    const start = new Date(startTimeStr).getTime();
+    const end = new Date(endTimeStr).getTime();
+
+    if (now > end) {
+      return { text: '기한 초과', colorClass: 'bg-danger text-white' };
+    }
+    if (now >= start && now <= end) {
+      return { text: '진행 중', colorClass: 'bg-success text-white' };
+    }
+
+    const diff = start - now;
+    const diffDays = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const diffHours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const diffMins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+
+    if (diffDays > 0) {
+      return { text: `D-${diffDays} (${diffHours}시간 남음)`, colorClass: 'bg-primary text-white' };
+    }
+    if (diffHours > 0) {
+      return { text: `D-Day (${diffHours}시간 남음)`, colorClass: 'bg-warning text-dark' };
+    }
+    return { text: `D-Day (${diffMins}분 남음)`, colorClass: 'bg-warning text-dark' };
+  };
+
+  // 일정 RFC 5545 표준 iCal 파일 생성 및 다운로드 헬퍼
+  const downloadScheduleIcs = (schedule: Schedule) => {
+    try {
+      const startIso = new Date(schedule.startTime).toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+      const endIso = new Date(schedule.endTime).toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+      const cleanDesc = (schedule.description || '').replace(/\n/g, '\\n');
+      
+      const icsLines = [
+        'BEGIN:VCALENDAR',
+        'VERSION:2.0',
+        'PRODID:-//Antigravity//Note Project//KO',
+        'BEGIN:VEVENT',
+        `UID:${schedule.id}`,
+        `DTSTART:${startIso}`,
+        `DTEND:${endIso}`,
+        `SUMMARY:${schedule.title}`,
+        `DESCRIPTION:${cleanDesc}`,
+        `CATEGORIES:${schedule.category}`,
+        'END:VEVENT',
+        'END:VCALENDAR'
+      ];
+
+      const blob = new Blob([icsLines.join('\r\n')], { type: 'text/calendar;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${schedule.title.replace(/[\/\\?%*:|"<>\s]/g, '_')}.ics`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      showToast('📅 iCal 일정 캘린더 파일 다운로드 성공!');
+    } catch (e) {
+      showToast('❌ iCal 파일 생성 중 오류 발생');
+    }
+  };
+
+  // 메모 JSON 백업 파일 다운로드 헬퍼
+  const downloadMemosJsonBackup = () => {
+    try {
+      const dataStr = JSON.stringify(myMemos, null, 2);
+      const blob = new Blob([dataStr], { type: 'application/json;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      const nowStr = new Date().toISOString().slice(0, 10);
+      link.href = url;
+      link.download = `antigravity_memos_backup_${nowStr}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      showToast('💾 메모 JSON 백업 다운로드 성공!');
+    } catch (e) {
+      showToast('❌ 백업 파일 생성 오류');
+    }
+  };
+
+  // 메모 JSON 백업 복원 및 업로드 파서
+  const handleImportMemosJson = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      try {
+        const fileContent = event.target?.result as string;
+        const parsedMemos = JSON.parse(fileContent);
+
+        if (!Array.isArray(parsedMemos)) {
+          showToast('❌ 올바르지 않은 백업 양식입니다. (배열 아님)');
+          return;
+        }
+
+        let importCount = 0;
+        for (const item of parsedMemos) {
+          if (item && item.title && typeof item.content === 'string') {
+            await addMemo({
+              title: item.title,
+              content: item.content,
+              color: item.color || '#fffbeb'
+            });
+            importCount++;
+          }
+        }
+        showToast(`💾 ${importCount}개의 백업 메모를 성공적으로 복원했습니다.`);
+        e.target.value = ''; // 인풋 초기화
+      } catch (err) {
+        showToast('❌ JSON 복원 실패: 파일 분석 오류');
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  // 메모 중요도 핀 판단 헬퍼
+  const isMemoPinned = (memo: Memo) => memo.title.startsWith('📌 ');
+
+  // 메모 제목 핀 제거 헬퍼
+  const getCleanMemoTitle = (title: string) => title.replace(/^📌\s*/, '');
+
+  // 메모 중요도 핀 고정 토글
+  const togglePinMemo = async (memo: Memo) => {
+    try {
+      if (isMemoPinned(memo)) {
+        const cleanTitle = memo.title.replace(/^📌\s*/, '');
+        await editMemo(memo.id, { ...memo, title: cleanTitle });
+        showToast('📌 메모 핀 고정이 해제되었습니다.');
+      } else {
+        const pinnedTitle = `📌 ${memo.title}`;
+        await editMemo(memo.id, { ...memo, title: pinnedTitle });
+        showToast('📌 메모가 최상단에 고정되었습니다.');
+      }
+    } catch (e) {
+      showToast('❌ 메모 고정 처리 실패');
+    }
+  };
+
+  // 글자 수 및 읽는 예상 시간 계산기
+  const getMemoStats = (content: string) => {
+    const charCountWithSpace = content.length;
+    const charCountWithoutSpace = content.replace(/\s/g, '').length;
+    const wordCount = content.trim().split(/\s+/).filter(Boolean).length;
+    const readingTimeMins = Math.ceil(wordCount / 200) || 1;
+    return {
+      charCountWithSpace,
+      charCountWithoutSpace,
+      wordCount,
+      readingTimeMins
+    };
+  };
+
+  // 키워드 하이라이터 렌더러
+  const renderHighlightedText = (text: string, query: string) => {
+    if (!query.trim()) return <span>{text}</span>;
+    const escapedQuery = query.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+    const regex = new RegExp(`(${escapedQuery})`, 'gi');
+    const parts = text.split(regex);
+    return (
+      <span>
+        {parts.map((part, index) => 
+          regex.test(part) ? (
+            <mark key={index} className="bg-warning text-dark px-0.5 rounded fw-bold">{part}</mark>
+          ) : (
+            part
+          )
+        )}
+      </span>
+    );
+  };
+
+  // 마크다운 원본 복사 및 공유용 텍스트 가공
+  const copyMemoMarkdown = (memo: Memo) => {
+    const rawTitle = getCleanMemoTitle(memo.title);
+    const dateStr = formatDateKST(memo.createdAt);
+    const shareText = `---
+📝 제목: ${rawTitle}
+⏰ 작성일: ${dateStr}
+---
+${memo.content}`;
+
+    navigator.clipboard.writeText(shareText).then(() => {
+      showToast('📋 원본 마크다운 텍스트를 클립보드에 복사했습니다.');
+    }).catch(() => {
+      showToast('❌ 복사 실패');
+    });
+  };
+
+  // 오늘 하루 스케줄 요약 브리핑 연산
+  const getTodayBriefing = () => {
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    const endOfToday = startOfToday + 24 * 60 * 60 * 1000 - 1;
+
+    const todaySchedules = myRawSchedules.filter((schedule) => {
+      const sTime = new Date(schedule.startTime).getTime();
+      const eTime = new Date(schedule.endTime).getTime();
+      return (sTime >= startOfToday && sTime <= endOfToday) || 
+             (eTime >= startOfToday && eTime <= endOfToday) ||
+             (sTime < startOfToday && eTime > endOfToday);
+    });
+
+    const pendingToday = todaySchedules.filter(s => !s.isCompleted).length;
+    const completedToday = todaySchedules.filter(s => s.isCompleted).length;
+    const importantToday = todaySchedules.filter(s => s.category === 'Important' && !s.isCompleted).length;
+
+    return {
+      totalToday: todaySchedules.length,
+      pendingToday,
+      completedToday,
+      importantToday
+    };
+  };
+
   useEffect(() => {
     setMounted(true);
     
@@ -678,6 +981,37 @@ export default function Home() {
             {/* 1. 일정 관리 (Schedule Tab) */}
             {activeTab === 'schedule' && (
               <>
+                {/* 6. 오늘의 스케줄 실시간 요약 브리핑 대시보드 */}
+                {(() => {
+                  const briefing = getTodayBriefing();
+                  if (briefing.totalToday === 0) return null;
+                  return (
+                    <div 
+                      className="premium-card p-3 mb-4 border-0 d-flex align-items-center gap-3 animate-fade-in"
+                      style={{
+                        background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.08), rgba(147, 51, 234, 0.08))',
+                        borderLeft: '5px solid #3b82f6',
+                        borderRadius: '16px'
+                      }}
+                    >
+                      <div className="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" style={{ width: '42px', height: '42px' }}>
+                        <i className="bi bi-robot fs-5"></i>
+                      </div>
+                      <div className="flex-grow-1 text-start">
+                        <span className="fw-bold text-dark d-block" style={{ fontSize: '0.9rem' }}>오늘의 AI 스케줄 브리핑</span>
+                        <small className="text-secondary" style={{ fontSize: '0.8rem' }}>
+                          오늘 진행할 일정이 총 <strong>{briefing.totalToday}건</strong> 있으며, 그 중 <strong>{briefing.completedToday}건</strong>을 완료했습니다. 
+                          {briefing.importantToday > 0 ? (
+                            <span> 미완료된 중요 일정 <strong>{briefing.importantToday}건</strong>이 있으니 잊지 마세요! 🚨</span>
+                          ) : (
+                            <span> 오늘 남은 과제들을 차근차근 해결해 나가 보세요. 👍</span>
+                          )}
+                        </small>
+                      </div>
+                    </div>
+                  );
+                })()}
+
                 {/* Overview Stats Row */}
                 <div className="row g-3 mb-4">
                   <div className="col-6 col-md-3">
@@ -820,6 +1154,44 @@ export default function Home() {
                   <div className="col-lg-8">
                     <div className="premium-card p-4">
                       {/* Filters Header Bar */}
+                      {/* 9. 카테고리별 컬러 칩 및 원클릭 퀵 필터 */}
+                      <div className="d-flex flex-wrap gap-2 mb-3 align-items-center">
+                        <span className="text-muted small fw-semibold me-1">카테고리 퀵 필터:</span>
+                        {[
+                          { value: 'All', label: '📁 전체', bg: 'bg-light text-dark' },
+                          { value: 'Work', label: '🏢 업무', bg: 'bg-primary-subtle text-primary' },
+                          { value: 'Personal', label: '🏡 개인', bg: 'bg-success-subtle text-success' },
+                          { value: 'Important', label: '⭐ 중요', bg: 'bg-danger-subtle text-danger' },
+                          { value: 'Meeting', label: '👥 회의', bg: 'bg-info-subtle text-info' },
+                          { value: 'Etc', label: '🏷️ 기타', bg: 'bg-secondary-subtle text-secondary' },
+                        ].map((chip) => {
+                          const isSelected = categoryFilter === chip.value;
+                          const count = chip.value === 'All' 
+                            ? myRawSchedules.length
+                            : myRawSchedules.filter(s => s.category === chip.value).length;
+
+                          return (
+                            <button
+                              key={chip.value}
+                              onClick={() => setCategoryFilter(chip.value)}
+                              className={`btn btn-sm px-2.5 py-1 rounded-pill d-flex align-items-center gap-1.5 transition-all border-0 ${isSelected ? 'fw-bold text-white shadow-sm' : chip.bg}`}
+                              style={{
+                                fontSize: '0.75rem',
+                                background: isSelected 
+                                  ? 'linear-gradient(135deg, #3b82f6, #6366f1)' 
+                                  : undefined,
+                                outline: isSelected ? '2px solid rgba(99, 102, 241, 0.4)' : 'none'
+                              }}
+                            >
+                              <span>{chip.label}</span>
+                              <span className={`badge rounded-pill ${isSelected ? 'bg-white text-primary' : 'bg-white-subtle-overlay text-dark'}`} style={{ fontSize: '0.65rem', backgroundColor: 'rgba(0,0,0,0.06)' }}>
+                                {count}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+
                       <div className="row g-3 align-items-center mb-4">
                         <div className="col-md-5">
                           <div className="input-group">
@@ -949,6 +1321,15 @@ export default function Home() {
                                         {categoryTextMap[schedule.category]}
                                       </span>
                                       
+                                      {(() => {
+                                        const dday = calculateDDay(schedule.startTime, schedule.endTime, schedule.isCompleted);
+                                        return (
+                                          <span className={`badge rounded-pill py-0.5 px-2 ${dday.colorClass}`} style={{ fontSize: '0.65rem', fontWeight: 600 }}>
+                                            {dday.text}
+                                          </span>
+                                        );
+                                      })()}
+
                                       {isOverdue && (
                                         <span className="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill py-0.5 px-2" style={{ fontSize: '0.65rem', fontWeight: 600 }}>
                                           <i className="bi bi-clock-history me-1"></i>기한 초과
@@ -957,12 +1338,12 @@ export default function Home() {
                                     </div>
 
                                     <h6 className={`fw-bold mb-1 ${schedule.isCompleted ? 'completed-text text-muted' : 'text-dark'}`} style={{ fontSize: '1.05rem' }}>
-                                      {schedule.title}
+                                      {renderHighlightedText(schedule.title, searchQuery)}
                                     </h6>
 
                                     {schedule.description && (
                                       <p className={`small mb-2 ${schedule.isCompleted ? 'text-muted' : 'text-secondary'}`} style={{ whiteSpace: 'pre-line', fontSize: '0.85rem' }}>
-                                        {schedule.description}
+                                        {renderHighlightedText(schedule.description, searchQuery)}
                                       </p>
                                     )}
 
@@ -982,6 +1363,13 @@ export default function Home() {
 
                                   {/* Actions Panel */}
                                   <div className="d-flex gap-1 align-self-start">
+                                    <button 
+                                      onClick={() => downloadScheduleIcs(schedule)} 
+                                      className="btn btn-sm btn-light border text-primary rounded-3"
+                                      title="캘린더 내보내기 (iCal .ics 파일)"
+                                    >
+                                      <i className="bi bi-calendar-event"></i>
+                                    </button>
                                     {!schedule.isCompleted && (
                                       <button 
                                         onClick={() => handleStartEdit(schedule)} 
@@ -1307,13 +1695,24 @@ export default function Home() {
             {/* Modal Header */}
             <div className="d-flex align-items-start justify-content-between mb-3 border-bottom pb-2" style={{ borderColor: 'rgba(0,0,0,0.08)' }}>
               <div>
-                <h4 className="fw-bold mb-1 display-font" style={{ letterSpacing: '-0.3px' }}>
-                  {selectedMemo.title}
+                <h4 className="fw-bold mb-1 display-font d-flex align-items-center gap-2" style={{ letterSpacing: '-0.3px' }}>
+                  {isMemoPinned(selectedMemo) && <i className="bi bi-pin-angle-fill text-primary" style={{ fontSize: '1.25rem' }}></i>}
+                  {getCleanMemoTitle(selectedMemo.title)}
                 </h4>
-                <small style={{ opacity: 0.7, fontSize: '0.75rem' }} className="d-flex align-items-center gap-1">
-                  <i className="bi bi-clock-history"></i>
-                  {formatDateKST(selectedMemo.createdAt)} 작성됨
-                </small>
+                <div className="d-flex flex-wrap align-items-center gap-2 mt-1" style={{ opacity: 0.8 }}>
+                  <small style={{ fontSize: '0.75rem' }} className="d-flex align-items-center gap-1">
+                    <i className="bi bi-clock-history"></i>
+                    {formatDateKST(selectedMemo.createdAt)} 작성됨
+                  </small>
+                  {(() => {
+                    const stats = getMemoStats(selectedMemo.content || '');
+                    return (
+                      <span className="badge bg-secondary-subtle text-secondary py-0.5 border" style={{ fontSize: '0.65rem' }}>
+                        공백제외: {stats.charCountWithoutSpace}자 / 예상리딩: {stats.readingTimeMins}분
+                      </span>
+                    );
+                  })()}
+                </div>
               </div>
               
               <button 
@@ -1353,6 +1752,20 @@ export default function Home() {
               <div className="d-flex gap-2">
                 <button
                   onClick={() => {
+                    copyMemoMarkdown(selectedMemo);
+                  }}
+                  className="btn btn-sm px-3 py-2 rounded-3 fw-bold d-flex align-items-center gap-1 border-0"
+                  style={{
+                    backgroundColor: 'rgba(255,255,255,0.4)',
+                    color: 'inherit',
+                    fontSize: '0.8rem'
+                  }}
+                  title="마크다운 복사"
+                >
+                  <i className="bi bi-share-fill"></i> 복사
+                </button>
+                <button
+                  onClick={() => {
                     handleStartMemoEdit(selectedMemo);
                     setSelectedMemo(null);
                   }}
@@ -1381,6 +1794,149 @@ export default function Home() {
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Pomodoro Timer Floating Widget */}
+      <div 
+        className="position-fixed bottom-4 end-4 text-end"
+        style={{ zIndex: 9999, bottom: '24px', right: '24px' }}
+      >
+        {!showPomodoroWidget ? (
+          <button
+            onClick={() => setShowPomodoroWidget(true)}
+            className="btn btn-primary rounded-circle shadow-lg d-flex align-items-center justify-content-center p-0 border-0"
+            style={{
+              width: '60px',
+              height: '60px',
+              background: 'linear-gradient(135deg, #ff6b6b, #ff8787)',
+              boxShadow: '0 8px 24px rgba(255, 107, 107, 0.4)',
+              transition: 'all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
+            }}
+            title="뽀모도로 집중 타이머 열기"
+          >
+            <i className="bi bi-hourglass-split text-white fs-4"></i>
+            {pomodoroIsRunning && (
+              <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger border border-light" style={{ fontSize: '0.65rem' }}>
+                ON
+              </span>
+            )}
+          </button>
+        ) : (
+          <div 
+            className="premium-card p-3 rounded-4 shadow-lg text-start border-0 animate-scale-up"
+            style={{
+              width: '300px',
+              backgroundColor: 'rgba(255, 255, 255, 0.95)',
+              backdropFilter: 'blur(20px)',
+              color: '#2b2d42',
+              boxShadow: '0 20px 50px rgba(0,0,0,0.15)',
+              border: '1px solid rgba(255, 255, 255, 0.5)'
+            }}
+          >
+            <div className="d-flex align-items-center justify-content-between border-bottom pb-2 mb-2" style={{ borderColor: 'rgba(0,0,0,0.06)' }}>
+              <h6 className="fw-bold m-0 d-flex align-items-center gap-2 text-primary">
+                🍅 뽀모도로 타이머
+              </h6>
+              <button 
+                onClick={() => setShowPomodoroWidget(false)}
+                className="btn btn-sm rounded-circle p-0 border-0 d-flex align-items-center justify-content-center"
+                style={{ backgroundColor: 'rgba(0,0,0,0.05)', width: '24px', height: '24px' }}
+              >
+                <i className="bi bi-dash fs-6"></i>
+              </button>
+            </div>
+
+            <div className="text-center py-3">
+              <div className="display-4 fw-bold display-font text-dark mb-1" style={{ fontSize: '2.5rem' }}>
+                {Math.floor(pomodoroSeconds / 60).toString().padStart(2, '0')}:
+                {(pomodoroSeconds % 60).toString().padStart(2, '0')}
+              </div>
+              <span className={`badge px-2 py-1 rounded-pill ${pomodoroMode === 'focus' ? 'bg-danger-subtle text-danger border border-danger-subtle' : 'bg-success-subtle text-success border border-success-subtle'}`} style={{ fontSize: '0.75rem' }}>
+                {pomodoroMode === 'focus' ? '🎯 집중 모드' : '🌿 휴식 모드'}
+              </span>
+            </div>
+
+            {/* Controls */}
+            <div className="d-flex align-items-center justify-content-center gap-2 mb-3">
+              <button
+                onClick={() => setPomodoroIsRunning(!pomodoroIsRunning)}
+                className={`btn btn-sm px-3 py-1.5 rounded-pill fw-bold text-white d-flex align-items-center gap-1 border-0 ${pomodoroIsRunning ? 'bg-warning' : 'bg-primary'}`}
+                style={{ fontSize: '0.8rem' }}
+              >
+                <i className={`bi ${pomodoroIsRunning ? 'bi-pause-fill' : 'bi-play-fill'}`}></i>
+                {pomodoroIsRunning ? '일시정지' : '시작'}
+              </button>
+              <button
+                onClick={() => {
+                  setPomodoroIsRunning(false);
+                  setPomodoroSeconds(pomodoroMode === 'focus' ? pomodoroCustomFocus * 60 : pomodoroCustomBreak * 60);
+                }}
+                className="btn btn-sm btn-outline-secondary px-3 py-1.5 rounded-pill fw-bold d-flex align-items-center gap-1"
+                style={{ fontSize: '0.8rem' }}
+              >
+                <i className="bi bi-arrow-counterclockwise"></i>
+                초기화
+              </button>
+            </div>
+
+            {/* Settings */}
+            <div className="bg-light p-2 rounded-3" style={{ fontSize: '0.75rem' }}>
+              <div className="row g-2 align-items-center">
+                <div className="col-6">
+                  <label className="text-muted fw-medium mb-1 d-block">집중 시간 (분)</label>
+                  <input 
+                    type="number" 
+                    value={pomodoroCustomFocus} 
+                    onChange={(e) => {
+                      const val = Math.max(1, parseInt(e.target.value) || 25);
+                      setPomodoroCustomFocus(val);
+                      if (pomodoroMode === 'focus' && !pomodoroIsRunning) {
+                        setPomodoroSeconds(val * 60);
+                      }
+                    }}
+                    className="form-control form-control-sm text-center border-0 bg-white"
+                    min="1"
+                  />
+                </div>
+                <div className="col-6">
+                  <label className="text-muted fw-medium mb-1 d-block">휴식 시간 (분)</label>
+                  <input 
+                    type="number" 
+                    value={pomodoroCustomBreak} 
+                    onChange={(e) => {
+                      const val = Math.max(1, parseInt(e.target.value) || 5);
+                      setPomodoroCustomBreak(val);
+                      if (pomodoroMode === 'break' && !pomodoroIsRunning) {
+                        setPomodoroSeconds(val * 60);
+                      }
+                    }}
+                    className="form-control form-control-sm text-center border-0 bg-white"
+                    min="1"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Floating Toast Notification */}
+      {toastMessage && (
+        <div 
+          className="position-fixed bottom-4 start-50 translate-middle-x px-4 py-3 rounded-pill shadow-lg d-flex align-items-center gap-2 border text-white animate-fade-in"
+          style={{
+            zIndex: 10000,
+            backgroundColor: 'rgba(15, 23, 42, 0.9)',
+            backdropFilter: 'blur(10px)',
+            borderColor: 'rgba(255, 255, 255, 0.15)',
+            fontSize: '0.9rem',
+            boxShadow: '0 10px 30px rgba(0, 0, 0, 0.3)',
+            bottom: '30px'
+          }}
+        >
+          <i className="bi bi-check-circle-fill text-success fs-5"></i>
+          <span className="fw-medium">{toastMessage}</span>
         </div>
       )}
 
