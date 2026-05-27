@@ -4,14 +4,72 @@ interface MarkdownRendererProps {
   content: string;
   className?: string;
   isDarkColor?: boolean;
-  isSummary?: boolean; // 요약 카드 뷰용 모드 (Mac 코드 블록 및 헤더 겹침 충돌을 원천 차단)
+  isSummary?: boolean; // 요약 카드 뷰용 모드
 }
 
-/**
- * Antigravity Note - 초경량 고성능 프리미엄 마크다운 렌더러 컴포넌트
- * Mac 스타일 윈도우 프레임 코드블록과 요약형 카드 뷰 겹침 방지 알고리즘(isSummary)을 통합하여,
- * 핀보드 요약 뷰에서는 글자 겹침 없는 단정한 텍스트를, 상세 보기에서는 화려한 프리미엄 서식을 차별화하여 제공합니다.
- */
+// 1. 프리미엄 구문 강조 엔진 (Syntax Highlighter)
+const highlightCode = (code: string, lang: string): string => {
+  // 기본 HTML 이스케이프 처리
+  let escaped = code
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+
+  const cleanLang = (lang || '').toLowerCase().trim();
+
+  if (['javascript', 'js', 'typescript', 'ts', 'jsx', 'tsx'].includes(cleanLang)) {
+    return escaped
+      // Comments (Green)
+      .replace(/(\/\/.*|\/\*[\s\S]*?\*\/)/g, '<span style="color: #6a9955; font-style: italic;">$1</span>')
+      // Strings (Orange-Red)
+      .replace(/(["'`])((?:\\\1|.)*?)\1/g, '<span style="color: #ce9178;">$1$2$1</span>')
+      // Keywords (Blue)
+      .replace(/\b(const|let|var|function|return|import|export|from|default|class|extends|new|if|else|for|while|do|switch|case|break|continue|try|catch|finally|throw|async|await|typeof|instanceof|in|of|null|undefined|true|false|void|this|super|interface|type|public|private|protected|static|readonly|as|any|number|string|boolean|unknown)\b/g, '<span style="color: #569cd6; font-weight: bold;">$1</span>')
+      // Method calls (Yellowish)
+      .replace(/\b([a-zA-Z_$][a-zA-Z0-9_$]*)(?=\()/g, '<span style="color: #dcdcaa;">$1</span>')
+      // Numbers (Light Green)
+      .replace(/\b(\d+)\b/g, '<span style="color: #b5cea8;">$1</span>')
+      // Built-in classes/objects (Teal)
+      .replace(/\b(console|window|document|Math|JSON|Date|Array|Object|String|Number|Boolean|Promise|Map|Set|Error|process)\b/g, '<span style="color: #4ec9b0;">$1</span>');
+  }
+
+  if (['css', 'scss', 'less'].includes(cleanLang)) {
+    return escaped
+      // Comments (Green)
+      .replace(/(\/\*[\s\S]*?\*\/)/g, '<span style="color: #6a9955; font-style: italic;">$1</span>')
+      // Property (Light Blue)
+      .replace(/\b([a-zA-Z-]+)(?=\s*:)/g, '<span style="color: #9cdcfe;">$1</span>')
+      // Value (Orange)
+      .replace(/(:\s*)([^;]+)(?=;)/g, '$1<span style="color: #ce9178;">$2</span>')
+      // Selector (Yellow-Orange)
+      .replace(/([^{]+)(?=\s*\{)/g, '<span style="color: #d7ba7d;">$1</span>');
+  }
+
+  if (['html', 'xml', 'svg'].includes(cleanLang)) {
+    return escaped
+      // Comments (Green)
+      .replace(/(&lt;!--[\s\S]*?--&gt;)/g, '<span style="color: #6a9955; font-style: italic;">$1</span>')
+      // Tags (Blue)
+      .replace(/(&lt;\/?[a-zA-Z0-9:-]+)/g, '<span style="color: #569cd6;">$1</span>')
+      // Attributes (Light Blue)
+      .replace(/(\s[a-zA-Z0-9-]+)(?=\s*=\s*['"])/g, '<span style="color: #9cdcfe;">$1</span>')
+      // Attribute values (Orange-Red)
+      .replace(/(=\s*['"])(.*?)(['"])/g, '$1<span style="color: #ce9178;">$2</span>$3');
+  }
+
+  if (['json'].includes(cleanLang)) {
+    return escaped
+      // Key (Light Blue)
+      .replace(/(".*?")(?=\s*:)/g, '<span style="color: #9cdcfe;">$1</span>')
+      // String value (Orange-Red)
+      .replace(/(:\s*)(".*?")/g, '$1<span style="color: #ce9178;">$2</span>')
+      // Numbers/Booleans/Null (Light green/blue)
+      .replace(/(:\s*)(\d+|true|false|null)/g, '$1<span style="color: #b5cea8;">$2</span>');
+  }
+
+  return escaped;
+};
+
 export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ 
   content, 
   className = '',
@@ -32,7 +90,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
 
   // 마크다운 파서 및 렉서 기전 구동 (상세 보기용 풀 렌더러)
   const parseMarkdownToHtml = (text: string): string => {
-    // 1. 기본 HTML 이스케이프 (XSS 방지)
+    // 1. HTML 이스케이프
     let html = text
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
@@ -52,46 +110,99 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
     // 4. 이탤릭 처리 (*italic*)
     html = html.replace(/\*([\s\S]+?)\*/g, '<em>$1</em>');
 
-    // 5. 취소선 (~~del~~)
+    // 5. 취소선 (~~strike~~)
     html = html.replace(/~~([\s\S]+?)~~/g, '<del>$1</del>');
 
-    // 6. 인용구 (&gt; quote)
+    // 6. 링크 [text](url)
+    const linkColor = isDarkColor ? '#facc15' : '#0284c7';
+    html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, `<a href="$2" target="_blank" rel="noopener noreferrer" style="color: ${linkColor}; text-decoration: underline; font-weight: 500;">$1</a>`);
+
+    // 7. 수평선 (---)
+    const hrColor = isDarkColor ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.08)';
+    html = html.replace(/^---$/gm, `<hr style="border: none; border-top: 1px solid ${hrColor}; margin: 1.5rem 0;" />`);
+
+    // 8. 인용구 (&gt; quote)
     const quoteBorder = isDarkColor ? 'rgba(255,255,255,0.5)' : 'rgba(0, 0, 0, 0.2)';
     const quoteBg = isDarkColor ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.02)';
     html = html.replace(/^&gt;\s+(.+)$/gm, `<blockquote class="ps-3 py-1.5 my-2.5 text-muted font-italic rounded-end" style="border-left: 4px solid ${quoteBorder} !important; background-color: ${quoteBg}; opacity: 0.9;">$1</blockquote>`);
 
-    // 7. 제목 헤더 처리 (### H3, ## H2, # H1)
+    // 9. 제목 헤더 처리 (### H3, ## H2, # H1)
     const borderUnder = isDarkColor ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.08)';
-    html = html.replace(/^###\s+(.+)$/gm, `<h6 class="fw-bold mt-4 mb-1.5 display-font" style="font-size: 1.05rem; letter-spacing: -0.2px;">$1</h6>`);
-    html = html.replace(/^##\s+(.+)$/gm, `<h5 class="fw-bold mt-4 mb-2 border-bottom pb-1.5 display-font" style="font-size: 1.25rem; border-color: ${borderUnder} !important; letter-spacing: -0.3px;">$1</h5>`);
-    html = html.replace(/^#\s+(.+)$/gm, `<h4 class="fw-bold mt-4.5 mb-2.5 border-bottom pb-1.5 display-font" style="font-size: 1.45rem; border-color: ${borderUnder} !important; letter-spacing: -0.4px;">$1</h4>`);
+    html = html.replace(/^###\s+(.+)$/gm, `<h6 class="fw-bold mt-4 mb-2 display-font text-start" style="font-size: 1.05rem; letter-spacing: -0.2px;">$1</h6>`);
+    html = html.replace(/^##\s+(.+)$/gm, `<h5 class="fw-bold mt-4 mb-2 border-bottom pb-2 text-start display-font" style="font-size: 1.25rem; border-color: ${borderUnder} !important; letter-spacing: -0.3px;">$1</h5>`);
+    html = html.replace(/^#\s+(.+)$/gm, `<h4 class="fw-bold mt-4.5 mb-3 border-bottom pb-2 text-start display-font" style="font-size: 1.45rem; border-color: ${borderUnder} !important; letter-spacing: -0.4px;">$1</h4>`);
 
-    // 8. 리스트 불릿 처리 ( - 항목 or * 항목 )
-    html = html.replace(/^[-*]\s+(.+)$/gm, '<li class="ms-3 small my-1" style="line-height: 1.6;">$1</li>');
+    // 10. 리스트(ul/li, ol/li) 파싱
+    const lines = html.split('\n');
+    let inUl = false;
+    let inOl = false;
+    const processedLines: string[] = [];
 
-    // 9. 줄바꿈 보존: \n 을 <br /> 로 치환
+    for (let line of lines) {
+      const trimmed = line.trim();
+      const ulMatch = trimmed.match(/^[-*]\s+(.+)$/);
+      const olMatch = trimmed.match(/^(\d+)\.\s+(.+)$/);
+
+      if (ulMatch) {
+        if (inOl) {
+          processedLines.push('</ol>');
+          inOl = false;
+        }
+        if (!inUl) {
+          processedLines.push('<ul class="my-2 text-start" style="padding-left: 1.25rem; list-style-type: disc;">');
+          inUl = true;
+        }
+        processedLines.push(`<li class="small my-1" style="line-height: 1.6;">${ulMatch[1]}</li>`);
+      } else if (olMatch) {
+        if (inUl) {
+          processedLines.push('</ul>');
+          inUl = false;
+        }
+        if (!inOl) {
+          processedLines.push('<ol class="my-2 text-start" style="padding-left: 1.25rem;">');
+          inOl = true;
+        }
+        processedLines.push(`<li class="small my-1" style="line-height: 1.6;">${olMatch[2]}</li>`);
+      } else {
+        if (inUl) {
+          processedLines.push('</ul>');
+          inUl = false;
+        }
+        if (inOl) {
+          processedLines.push('</ol>');
+          inOl = false;
+        }
+        processedLines.push(line);
+      }
+    }
+
+    if (inUl) processedLines.push('</ul>');
+    if (inOl) processedLines.push('</ol>');
+
+    html = processedLines.join('\n');
+
+    // 11. 줄바꿈 보존 (\n -> <br />)
     html = html.replace(/\n/g, '<br />');
+    html = html.replace(/(<(?:ul|ol|li|h4|h5|h6|blockquote|hr)[^>]*>)<br \/>/g, '$1');
+    html = html.replace(/<br \/><\/(?:ul|ol|li|h4|h5|h6|blockquote|hr)>/g, '</$1>');
+    html = html.replace(/<\/li><br \/>/g, '</li>');
+    html = html.replace(/<\/ul><br \/>/g, '</ul>');
+    html = html.replace(/<\/ol><br \/>/g, '</ol>');
 
     return html;
   };
 
-  // 요약 카드 핀보드 뷰를 위한 고정밀 텍스트 정제기 (겹침 오류 완전 정벌)
+  // 요약 카드 핀보드 뷰를 위한 고정밀 텍스트 정제기
   const renderSummaryText = () => {
-    // 1. 코드 블록(```) 부분을 컴팩트하게 변환 (Mac 윈도우 등 큰 박스 요소를 제외하고 인라인 텍스트화)
     let cleaned = content.replace(/```([\s\S]*?)```/g, (_, code) => {
-      // 코드 내 주석/줄바꿈을 정제하여 한 줄의 콤팩트 설명구로 병합
       const snippet = code.trim().split('\n')[0] || '';
       return ` 💻 [코드 블록: ${snippet.substring(0, 15)}...] `;
     });
 
-    // 2. `#` 제목 기호들을 떼어내고 세련되게 변환
     cleaned = cleaned.replace(/^#+\s+(.+)$/gm, '$1');
-
-    // 3. 인용구 `>` 기호들 떼어내기
     cleaned = cleaned.replace(/^&gt;\s+(.+)$/gm, '$1');
     cleaned = cleaned.replace(/^>\s+(.+)$/gm, '$1');
 
-    // 4. 인라인 코드( ` ), 볼드( ** ), 이탤릭( * ), 취소선( ~~ ) 문법 기호들 순수 텍스트로 이스케이프
     cleaned = cleaned
       .replace(/`([^`]+)`/g, '$1')
       .replace(/\*\*([\s\S]+?)\*\*/g, '$1')
@@ -100,7 +211,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
 
     return (
       <p 
-        className="m-0 small"
+        className="m-0 small text-start"
         style={{ 
           whiteSpace: 'pre-line',
           lineHeight: '1.6',
@@ -127,47 +238,52 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
         const blockId = `code-block-${index}`;
         const isCopied = copySuccess === blockId;
 
+        // 구문 강조 처리
+        const highlighted = highlightCode(codeText, language);
+        const lines = highlighted.split('\n');
+
         return (
           <div 
             key={index} 
-            className="my-3 overflow-hidden rounded-4 shadow-lg border text-start"
+            className="my-3 overflow-hidden rounded-4 border text-start"
             style={{
               borderColor: isDarkColor ? 'rgba(255,255,255,0.18)' : 'rgba(0, 0, 0, 0.08)',
-              boxShadow: '0 12px 28px rgba(0, 0, 0, 0.15)',
-              background: '#181825',
+              boxShadow: '0 12px 28px rgba(0, 0, 0, 0.25)',
+              background: '#1e1e2e', // 더욱 깊고 세련된 테마 (Catppuccin Mocha 배경)
               fontFamily: 'system-ui, -apple-system, sans-serif'
             }}
           >
+            {/* Mac style OS Window Header */}
             <div 
               className="d-flex align-items-center justify-content-between px-3 py-2.5"
               style={{
-                background: 'rgba(255, 255, 255, 0.03)',
-                borderBottom: '1px solid rgba(255, 255, 255, 0.06)'
+                background: 'rgba(255, 255, 255, 0.02)',
+                borderBottom: '1px solid rgba(255, 255, 255, 0.05)'
               }}
             >
-              <div className="d-flex align-items-center gap-1.5">
-                <span className="rounded-circle" style={{ width: '10px', height: '10px', backgroundColor: '#ff5f56', display: 'inline-block' }}></span>
-                <span className="rounded-circle" style={{ width: '10px', height: '10px', backgroundColor: '#ffbd2e', display: 'inline-block' }}></span>
-                <span className="rounded-circle" style={{ width: '10px', height: '10px', backgroundColor: '#27c93f', display: 'inline-block' }}></span>
+              <div className="d-flex align-items-center gap-2">
+                <span className="rounded-circle" style={{ width: '12px', height: '12px', backgroundColor: '#ff5f56', display: 'inline-block' }}></span>
+                <span className="rounded-circle" style={{ width: '12px', height: '12px', backgroundColor: '#ffbd2e', display: 'inline-block' }}></span>
+                <span className="rounded-circle" style={{ width: '12px', height: '12px', backgroundColor: '#27c93f', display: 'inline-block' }}></span>
               </div>
               
               <span 
                 className="text-uppercase small fw-bold tracking-wider font-monospace" 
                 style={{ 
-                  color: 'rgba(255, 255, 255, 0.35)', 
-                  fontSize: '0.65rem',
-                  letterSpacing: '1px'
+                  color: 'rgba(255, 255, 255, 0.4)', 
+                  fontSize: '0.7rem',
+                  letterSpacing: '1.2px'
                 }}
               >
                 {language}
               </span>
-
+ 
               <button
                 onClick={() => handleCopyCode(codeText, blockId)}
-                className="btn btn-sm py-0.5 px-2 rounded-3 transition-all d-flex align-items-center gap-1 border-0"
+                className="btn btn-sm py-1 px-2.5 rounded-3 transition-all d-flex align-items-center gap-1.5 border-0"
                 style={{
-                  backgroundColor: isCopied ? '#27c93f' : 'rgba(255, 255, 255, 0.08)',
-                  color: isCopied ? '#fff' : 'rgba(255, 255, 255, 0.65)',
+                  backgroundColor: isCopied ? '#27c93f' : 'rgba(255, 255, 255, 0.06)',
+                  color: '#fff',
                   fontSize: '0.7rem',
                   fontWeight: 600,
                   transition: 'all 0.15s ease'
@@ -186,23 +302,45 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
                 )}
               </button>
             </div>
-
-            <pre 
-              className="m-0 p-3.5 overflow-x-auto" 
+ 
+            {/* VS Code/Carbon 스타일 줄 번호 및 하이라이트 레이아웃 */}
+            <div 
+              className="p-3 overflow-x-auto" 
               style={{ 
                 maxHeight: '380px',
-                lineHeight: '1.6',
-                fontFamily: 'JetBrains Mono, Fira Code, Consolas, monospace',
-                fontSize: '0.85rem',
-                color: '#cdd6f4'
+                background: '#1e1e2e'
               }}
             >
-              <code>{codeText}</code>
-            </pre>
+              <div className="d-flex font-monospace" style={{ fontSize: '0.85rem' }}>
+                {/* Line Numbers Column */}
+                <div 
+                  className="text-end pe-3 select-none text-muted" 
+                  style={{ 
+                    borderRight: '1px solid rgba(255,255,255,0.06)',
+                    minWidth: '2.2rem',
+                    opacity: 0.35
+                  }}
+                >
+                  {lines.map((_, i) => (
+                    <div key={i} style={{ lineHeight: '1.6' }}>{i + 1}</div>
+                  ))}
+                </div>
+                {/* Code Column */}
+                <div className="ps-3 flex-grow-1 text-start" style={{ color: '#cdd6f4' }}>
+                  {lines.map((line, i) => (
+                    <div 
+                      key={i} 
+                      style={{ lineHeight: '1.6', whiteSpace: 'pre' }}
+                      dangerouslySetInnerHTML={{ __html: line || ' ' }}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
         );
       }
-
+ 
       const parsedHtml = parseMarkdownToHtml(part);
       return (
         <div 

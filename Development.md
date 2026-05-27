@@ -4,7 +4,21 @@
 
 ## 📅 개발 히스토리
 
-### [2026-05-27] 메모/일정 삭제 컨펌 모달창 도입 및 메모 Soft Delete 완전 이식 (최신)
+### [2026-05-28] 마크다운 파서 고도화 및 VS Code 스타일 구문 강조 코드블록 구현 (최신)
+- **작업 내용**:
+  1. **마크다운 파싱 고도화**:
+     - 텍스트 줄바꿈(`\n`) 시 무조건 `<br />`을 덧씌우던 투박한 기전을 개편하여, 라인 단위 목록 감싸기 렉서를 직접 구축.
+     - 리스트 문법(`- `, `* `) 및 순서 리스트 문법(`1. `)이 인접할 경우 각각 단일 `<ul>` 및 `<ol>` 태그로 무결히 감싸 지능적으로 그룹 렌더링되도록 구현.
+     - 링크(`[text](url)`) 및 수평선(`---`) 문법 추가 지원.
+  2. **VS Code (Catppuccin Mocha) 스타일 구문 강조 코드블록**:
+     - 자바스크립트/타입스크립트, CSS, HTML, JSON 등 주요 웹 언어에 대응하는 정규식 기반 구문 강조 엔진(Syntax Highlighter)을 탑재하여 색상 가시성 대폭 향상.
+     - 프리미엄 VS Code 에디터와 동일하게 코드 줄바꿈에 따라 좌측에 세련된 **행 번호(Line Numbers)**가 자동 노출되도록 디자인 개편.
+     - 행 번호는 드래그되지 않도록 `select-none` 처리하여 오직 코드 자체만 깔끔하게 선택/복사되도록 설계.
+  3. **테스트 및 빌드 검증**:
+     - Jest 단위 테스트 스위트 99개 올패스(Statements/Branches/Functions/Lines 100.00% 통과 유지) 확인.
+     - Next.js Turbopack 빌드 검증 완료.
+
+### [2026-05-27] 메모/일정 삭제 컨펌 모달창 도입 및 메모 Soft Delete 완전 이식
 - **작업 내용**:
   1. **메모 Soft Delete 연동**:
      - `schema.prisma` 및 `LocalStorageMemoService`에 지정된 `isDeleted` 규칙을 기반으로, `SupabaseMemoService` 내 `deleteMemo`를 Hard Delete(delete 쿼리)에서 Soft Delete(update `isDeleted = true` 쿼리)로 전면 리팩토링.
