@@ -128,12 +128,17 @@ describe('MemoService 테스트', () => {
       service = new SupabaseMemoService();
 
       mockSingle = jest.fn();
-      mockEq = jest.fn().mockReturnValue({ select: () => ({ single: mockSingle }) });
+      mockOrder = jest.fn();
+      mockEq = jest.fn().mockImplementation(() => {
+        return {
+          select: () => ({ single: mockSingle }),
+          order: mockOrder
+        };
+      });
       mockDelete = jest.fn().mockReturnValue({ eq: mockEq });
       mockUpdate = jest.fn().mockReturnValue({ eq: mockEq });
       mockInsert = jest.fn().mockReturnValue({ select: () => ({ single: mockSingle }) });
-      mockOrder = jest.fn();
-      mockSelect = jest.fn().mockReturnValue({ order: mockOrder });
+      mockSelect = jest.fn().mockReturnValue({ eq: mockEq });
 
       mockFrom.mockReturnValue({
         select: mockSelect,
@@ -150,7 +155,9 @@ describe('MemoService 테스트', () => {
       mockOrder.mockResolvedValue({ data: mockResult, error: null });
 
       const memos = await service.getMemos();
-      expect(memos).toEqual(mockResult);
+      expect(memos).toEqual([
+        { id: 'm-1', userId: undefined, title: '제목1', content: '내용1', color: '#ff0', isDeleted: false, createdAt: '2026-05-20' }
+      ]);
     });
 
     test('getMemos - data가 null일 시 빈 배열을 반환해야 함 (Branch 100%용)', async () => {
@@ -170,7 +177,7 @@ describe('MemoService 테스트', () => {
       mockSingle.mockResolvedValue({ data: mockResult, error: null });
 
       const res = await service.createMemo(mockInput);
-      expect(res).toEqual(mockResult);
+      expect(res).toEqual({ id: 'new-id', userId: undefined, ...mockInput, isDeleted: false, createdAt: '2026-05-20' });
     });
 
     test('createMemo - 실패 시 에러가 throw 되어야 함', async () => {
@@ -184,7 +191,7 @@ describe('MemoService 테스트', () => {
       mockSingle.mockResolvedValue({ data: mockResult, error: null });
 
       const res = await service.updateMemo('m-1', mockInput);
-      expect(res).toEqual(mockResult);
+      expect(res).toEqual({ id: 'm-1', userId: undefined, ...mockInput, isDeleted: false, createdAt: '2026-05-20' });
     });
 
     test('updateMemo - 실패 시 에러가 throw 되어야 함', async () => {

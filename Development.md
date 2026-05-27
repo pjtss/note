@@ -4,7 +4,21 @@
 
 ## 📅 개발 히스토리
 
-### [2026-05-24] 10대 프리미엄 생산성 유틸리티 기능 설계 및 연동 개발 완료 (최신)
+### [2026-05-27] 메모/일정 삭제 컨펌 모달창 도입 및 메모 Soft Delete 완전 이식 (최신)
+- **작업 내용**:
+  1. **메모 Soft Delete 연동**:
+     - `schema.prisma` 및 `LocalStorageMemoService`에 지정된 `isDeleted` 규칙을 기반으로, `SupabaseMemoService` 내 `deleteMemo`를 Hard Delete(delete 쿼리)에서 Soft Delete(update `isDeleted = true` 쿼리)로 전면 리팩토링.
+     - `getMemos` 쿼리에서 `isDeleted = false` 데이터만 필터링 조회되도록 Supabase Query Builder 조건문 장착.
+     - `createMemo`, `updateMemo` 등에서 반환 및 입력되는 `isDeleted` 데이터 맵핑 강화.
+  2. **삭제 컨펌 모달 도입**:
+     - 브라우저 내장 대화상자 대신, Glassmorphic 3D 스타일로 마크업된 고감도 커스텀 모달창 구현.
+     - 일정 목록, 메모 카드, 메모 상세 모달 내 삭제 버튼을 클릭할 때 즉시 삭제되지 않고 `deleteConfirmTarget` 상태를 지정하여 확인 팝업이 노출되도록 격리.
+     - 삭제 버튼 누를 시 비즈니스 훅(`removeSchedule`, `removeMemo`)이 실행되고, 취소 클릭 시 대화상자를 안전하게 종료하도록 흐름 제어.
+  3. **테스트 및 빌드 무결성 보증**:
+     - `memoService.test.ts`에 변경된 Supabase API Mock 체인(select -> eq -> order) 및 리턴 데이터 형태 일치 보강.
+     - Jest 99개 테스트 스위트 100% 정상 통과 및 Next.js Turbopack 빌드 정상 가동.
+
+### [2026-05-24] 10대 프리미엄 생산성 유틸리티 기능 설계 및 연동 개발 완료
 - **작업 내용**:
   1. **요구사항 수용 및 10대 유틸리티 기획**:
      - 기존의 핵심 기능(일정 관리 CRUD, 메모 패드 CRUD, 로그인 다중 사용자 격리 및 JWT 토큰 파이프라인)을 100% 온전하게 보존하면서 사용성을 극대화하기 위한 10대 편의 유틸리티 기획 수립.

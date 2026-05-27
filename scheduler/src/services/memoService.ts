@@ -24,6 +24,7 @@ export class LocalStorageMemoService implements IMemoService {
           title: '💡 Antigravity 프리미엄 메모패드',
           content: '일정 관리와 유기적으로 결합된 프리미엄 메모 핀보드입니다. 마이크로 호버 애니메이션과 파스텔톤 다채로운 색상으로 영감을 기록하세요!',
           color: '#ffd166', // 노랑 파스텔
+          isDeleted: false,
           createdAt: new Date().toISOString()
         },
         {
@@ -31,6 +32,7 @@ export class LocalStorageMemoService implements IMemoService {
           title: '🎨 디자인 영감 및 HSL 색상표',
           content: '메모 카드의 우측 하단 팔레트 버튼을 눌러보세요. HSL 기반의 세련된 조화로운 색상 스펙트럼으로 카드 감성을 손쉽게 변경할 수 있습니다.',
           color: '#a8dadc', // 하늘색 파스텔
+          isDeleted: false,
           createdAt: new Date().toISOString()
         },
         {
@@ -38,6 +40,7 @@ export class LocalStorageMemoService implements IMemoService {
           title: '⚡ 실시간 클라우드 Supabase 싱크',
           content: '배포 환경변수가 장착되는 즉시, 모든 메모는 Supabase 클라우드 데이터베이스와 0.1초 만에 실시간 양방향 싱크되어 안전하게 보존됩니다.',
           color: '#bdb2ff', // 연보라 파스텔
+          isDeleted: false,
           createdAt: new Date().toISOString()
         }
       ];
@@ -57,7 +60,7 @@ export class LocalStorageMemoService implements IMemoService {
   }
 
   async getMemos(): Promise<Memo[]> {
-    return this.getRawMemos();
+    return this.getRawMemos().filter(m => !m.isDeleted);
   }
 
   async createMemo(input: CreateMemoInput): Promise<Memo> {
@@ -68,6 +71,7 @@ export class LocalStorageMemoService implements IMemoService {
       title: input.title,
       content: input.content,
       color: input.color,
+      isDeleted: false,
       createdAt: new Date().toISOString()
     };
     memos.push(newMemo);
@@ -90,8 +94,8 @@ export class LocalStorageMemoService implements IMemoService {
 
   async deleteMemo(id: string): Promise<void> {
     const memos = this.getRawMemos();
-    const filtered = memos.filter(m => m.id !== id);
-    this.saveRawMemos(filtered);
+    const updated = memos.map(m => m.id === id ? { ...m, isDeleted: true } : m);
+    this.saveRawMemos(updated);
   }
 }
 
@@ -101,6 +105,7 @@ export class SupabaseMemoService implements IMemoService {
     const { data, error } = await supabase
       .from('memos')
       .select('*')
+      .eq('isDeleted', false)
       .order('createdAt', { ascending: false });
 
     if (error) throw new Error(error.message);
@@ -110,6 +115,7 @@ export class SupabaseMemoService implements IMemoService {
       title: item.title,
       content: item.content || '',
       color: item.color || '#2b2d42',
+      isDeleted: item.isDeleted || false,
       createdAt: item.createdAt
     }));
   }
@@ -123,7 +129,8 @@ export class SupabaseMemoService implements IMemoService {
           userId: input.userId,
           title: input.title,
           content: input.content,
-          color: input.color
+          color: input.color,
+          isDeleted: false
         }
       ])
       .select()
@@ -136,6 +143,7 @@ export class SupabaseMemoService implements IMemoService {
       title: data.title,
       content: data.content || '',
       color: data.color || '#2b2d42',
+      isDeleted: data.isDeleted || false,
       createdAt: data.createdAt
     };
   }
@@ -155,6 +163,7 @@ export class SupabaseMemoService implements IMemoService {
       title: data.title,
       content: data.content || '',
       color: data.color || '#2b2d42',
+      isDeleted: data.isDeleted || false,
       createdAt: data.createdAt
     };
   }
@@ -162,7 +171,7 @@ export class SupabaseMemoService implements IMemoService {
   async deleteMemo(id: string): Promise<void> {
     const { error } = await supabase
       .from('memos')
-      .delete()
+      .update({ isDeleted: true })
       .eq('id', id);
 
     if (error) throw new Error(error.message);

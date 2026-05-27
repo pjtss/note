@@ -80,6 +80,12 @@ export default function Home() {
   const [memoColorFilter, setMemoColorFilter] = useState('All');
   const [selectedMemo, setSelectedMemo] = useState<Memo | null>(null);
 
+  // 삭제 확인 모달용 상태
+  const [deleteConfirmTarget, setDeleteConfirmTarget] = useState<{
+    type: 'schedule' | 'memo';
+    id: string;
+  } | null>(null);
+
   // 글꼴 선택 커스터마이저 상태 & 옵션 정의
   const [selectedFont, setSelectedFont] = useState<string>('Pretendard');
   const fontOptions = [
@@ -734,6 +740,26 @@ ${memo.content}`;
     setMemoColor('#fffbeb');
   };
 
+  // 삭제 처리 핸들러
+  const handleDeleteConfirm = async () => {
+    if (!deleteConfirmTarget) return;
+    const { type, id } = deleteConfirmTarget;
+
+    try {
+      if (type === 'schedule') {
+        await removeSchedule(id);
+        showToast('📅 일정이 삭제되었습니다.');
+      } else {
+        await removeMemo(id);
+        showToast('📋 메모가 삭제되었습니다.');
+      }
+    } catch (e) {
+      showToast('❌ 삭제 처리 중 오류가 발생했습니다.');
+    } finally {
+      setDeleteConfirmTarget(null);
+    }
+  };
+
   // 한국어 날짜 포맷터
   const formatDateKST = (isoString: string) => {
     const date = new Date(isoString);
@@ -1380,7 +1406,7 @@ ${memo.content}`;
                                       </button>
                                     )}
                                     <button 
-                                      onClick={() => removeSchedule(schedule.id)} 
+                                      onClick={() => setDeleteConfirmTarget({ type: 'schedule', id: schedule.id })} 
                                       className="btn btn-sm btn-light border text-danger rounded-3"
                                       title="일정 삭제"
                                     >
@@ -1602,7 +1628,7 @@ ${memo.content}`;
                                       <button
                                         onClick={(e) => {
                                           e.stopPropagation();
-                                          removeMemo(memo.id);
+                                          setDeleteConfirmTarget({ type: 'memo', id: memo.id });
                                         }}
                                         className="btn btn-sm p-1 rounded-3 transition-all d-flex align-items-center justify-content-center border-0"
                                         style={{
@@ -1780,7 +1806,7 @@ ${memo.content}`;
                 </button>
                 <button
                   onClick={() => {
-                    removeMemo(selectedMemo.id);
+                    setDeleteConfirmTarget({ type: 'memo', id: selectedMemo.id });
                     setSelectedMemo(null);
                   }}
                   className="btn btn-sm px-3 py-2 rounded-3 fw-bold text-white d-flex align-items-center gap-1 border-0"
@@ -1920,6 +1946,68 @@ ${memo.content}`;
           </div>
         )}
       </div>
+
+      {/* 삭제 확인 모달 (Glassmorphic) */}
+      {deleteConfirmTarget && (
+        <div 
+          className="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center px-3"
+          style={{
+            zIndex: 10000,
+            backgroundColor: 'rgba(15, 23, 42, 0.65)',
+            backdropFilter: 'blur(12px)',
+            transition: 'all 0.3s ease-in-out'
+          }}
+          onClick={() => setDeleteConfirmTarget(null)}
+        >
+          <div 
+            className="premium-card p-4 w-100 rounded-4 border-0 shadow-lg position-relative scale-in"
+            style={{
+              maxWidth: '400px',
+              backgroundColor: '#ffffff',
+              color: '#2b2d42',
+              boxShadow: '0 25px 60px rgba(0, 0, 0, 0.3)',
+              borderTop: '6px solid #dc3545',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header Icon */}
+            <div className="text-center mb-3">
+              <div className="bg-danger-subtle text-danger rounded-circle d-inline-flex align-items-center justify-content-center p-3 mb-2 shadow-sm" style={{ width: '56px', height: '56px' }}>
+                <i className="bi bi-exclamation-triangle-fill fs-3"></i>
+              </div>
+              <h5 className="fw-bold mb-1">삭제 확인</h5>
+            </div>
+
+            {/* Body Text */}
+            <div className="text-center py-2 mb-4 text-secondary" style={{ fontSize: '0.95rem', lineHeight: '1.5' }}>
+              삭제하시겠습니까?<br />
+              {deleteConfirmTarget.type === 'memo' ? (
+                <small className="text-muted" style={{ fontSize: '0.8rem' }}>(메모는 보관 처리되며, 언제든지 복구할 수 있습니다.)</small>
+              ) : (
+                <small className="text-muted" style={{ fontSize: '0.8rem' }}>(이 작업은 되돌릴 수 없습니다.)</small>
+              )}
+            </div>
+
+            {/* Footer Buttons */}
+            <div className="d-flex gap-2">
+              <button
+                onClick={() => setDeleteConfirmTarget(null)}
+                className="btn btn-light border w-100 py-2.5 rounded-3 fw-semibold"
+                style={{ fontSize: '0.9rem' }}
+              >
+                취소
+              </button>
+              <button
+                onClick={handleDeleteConfirm}
+                className="btn btn-danger w-100 py-2.5 rounded-3 fw-semibold shadow-sm"
+                style={{ fontSize: '0.9rem' }}
+              >
+                삭제
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Floating Toast Notification */}
       {toastMessage && (

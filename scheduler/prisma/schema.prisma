@@ -48,6 +48,7 @@ model Memo {
   title     String
   content   String?
   color     String   @default("#2b2d42")
+  isDeleted Boolean  @default(false)
   createdAt DateTime @default(now())
 
   @@map("memos")

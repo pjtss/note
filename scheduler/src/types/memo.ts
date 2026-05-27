@@ -5,6 +5,7 @@ export interface Memo {
   content: string;
   color: string;
   createdAt: string;
+  isDeleted?: boolean;
 }
 
 export interface CreateMemoInput {
@@ -19,4 +20,5 @@ export interface UpdateMemoInput {
   content?: string;
   color?: string;
   userId?: string;
+  isDeleted?: boolean;
 }
