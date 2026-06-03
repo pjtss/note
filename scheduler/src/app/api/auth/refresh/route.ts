@@ -1,8 +1,6 @@
 import { NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../../../../lib/db';
 import { JwtService } from '../../../../services/jwtService';
-
-const prisma = new PrismaClient();
 
 export async function POST(request: Request) {
   try {
@@ -77,7 +75,5 @@ export async function POST(request: Request) {
       { error: err.message || '토큰 갱신 중 처리할 수 없는 오류가 발생했습니다.' },
       { status: 500 }
     );
-  } finally {
-    await prisma.$disconnect();
   }
 }

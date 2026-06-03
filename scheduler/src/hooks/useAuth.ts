@@ -30,12 +30,12 @@ export function useAuth() {
     }
   }, [getService]);
 
-  const signUpUser = useCallback(async (input: RegisterInput) => {
+  const signUpUser = useCallback(async (input: RegisterInput, rememberMe: boolean = true) => {
     setLoading(true);
     setAuthError(null);
     try {
       const activeService = getService();
-      const session = await activeService.register(input);
+      const session = await activeService.register(input, rememberMe);
       setUser(session);
       return session;
     } catch (err: any) {
@@ -46,12 +46,12 @@ export function useAuth() {
     }
   }, [getService]);
 
-  const signInUser = useCallback(async (input: LoginInput) => {
+  const signInUser = useCallback(async (input: LoginInput, rememberMe: boolean = true) => {
     setLoading(true);
     setAuthError(null);
     try {
       const activeService = getService();
-      const session = await activeService.login(input);
+      const session = await activeService.login(input, rememberMe);
       setUser(session);
       return session;
     } catch (err: any) {
@@ -62,12 +62,12 @@ export function useAuth() {
     }
   }, [getService]);
 
-  const signInSocial = useCallback(async (provider: SocialProvider) => {
+  const signInSocial = useCallback(async (provider: SocialProvider, rememberMe: boolean = true) => {
     setLoading(true);
     setAuthError(null);
     try {
       const activeService = getService();
-      const session = await activeService.socialLogin(provider);
+      const session = await activeService.socialLogin(provider, rememberMe);
       // Supabase OAuth는 페이지 리다이렉션이 발생하므로 로컬모드에서만 바로 세션 갱신
       if (session.id !== 'oauth-pending') {
         setUser(session);

@@ -15,7 +15,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "PlanBoard | Premium Personal Scheduler",
+  title: "Simple Note",
   description: "Next.js & Supabase & Bootstrap 기반의 프리미엄 일정 관리 대시보드",
 };
 
@@ -53,4 +53,3 @@ export default function RootLayout({
     </html>
   );
 }
-

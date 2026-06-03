@@ -1,9 +1,7 @@
 import { NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../../../../lib/db';
 import { JwtService } from '../../../../services/jwtService';
 import { hashPassword } from '../register/route';
-
-const prisma = new PrismaClient();
 
 export async function POST(request: Request) {
   try {
@@ -66,7 +64,5 @@ export async function POST(request: Request) {
       { error: err.message || '로그인 진행 중 서버 내부 장해가 발생했습니다.' },
       { status: 500 }
     );
-  } finally {
-    await prisma.$disconnect();
   }
 }

@@ -60,6 +60,7 @@ export default function Home() {
   const [authUsername, setAuthUsername] = useState('');
   const [authPassword, setAuthPassword] = useState('');
   const [authDisplayName, setAuthDisplayName] = useState('');
+  const [rememberMe, setRememberMe] = useState(true);
 
   // 일정 입력 폼 상태
   const [title, setTitle] = useState('');
@@ -596,12 +597,12 @@ ${memo.content}`;
           username: authUsername,
           password: authPassword,
           displayName: authDisplayName
-        });
+        }, rememberMe);
       } else {
         await signInUser({
           username: authUsername,
           password: authPassword
-        });
+        }, rememberMe);
       }
       // 성공 시 입력 필드 비우기
       setAuthUsername('');
@@ -888,7 +889,7 @@ ${memo.content}`;
                 {/* Social Login Panel */}
                 <div className="d-flex flex-column gap-2 mb-4">
                   <button
-                    onClick={() => signInSocial('google')}
+                    onClick={() => signInSocial('google', rememberMe)}
                     className="btn btn-outline-dark w-100 rounded-pill py-2.5 d-flex align-items-center justify-content-center gap-2 border border-light-subtle shadow-sm transition-all"
                     style={{ fontSize: '0.9rem', backgroundColor: '#ffffff' }}
                   >
@@ -896,7 +897,7 @@ ${memo.content}`;
                     <strong>Google</strong> 계정으로 로그인
                   </button>
                   <button
-                    onClick={() => signInSocial('kakao')}
+                    onClick={() => signInSocial('kakao', rememberMe)}
                     className="btn w-100 rounded-pill py-2.5 d-flex align-items-center justify-content-center gap-2 shadow-sm transition-all text-dark"
                     style={{ fontSize: '0.9rem', backgroundColor: '#fee500', border: 'none' }}
                   >
@@ -904,7 +905,7 @@ ${memo.content}`;
                     <strong>Kakao</strong> 계정으로 로그인
                   </button>
                   <button
-                    onClick={() => signInSocial('naver')}
+                    onClick={() => signInSocial('naver', rememberMe)}
                     className="btn w-100 rounded-pill py-2.5 d-flex align-items-center justify-content-center gap-2 shadow-sm transition-all text-white"
                     style={{ fontSize: '0.9rem', backgroundColor: '#03c75a', border: 'none' }}
                   >
@@ -950,7 +951,7 @@ ${memo.content}`;
                     />
                   </div>
 
-                  <div className="mb-4">
+                  <div className="mb-3">
                     <label htmlFor="authPassword" className="form-label small fw-semibold text-muted">비밀번호 *</label>
                     <input
                       type="password"
@@ -961,6 +962,19 @@ ${memo.content}`;
                       onChange={(e) => setAuthPassword(e.target.value)}
                       required
                     />
+                  </div>
+
+                  <div className="form-check mb-4 text-start">
+                    <input
+                      type="checkbox"
+                      className="form-check-input cursor-pointer"
+                      id="rememberMe"
+                      checked={rememberMe}
+                      onChange={(e) => setRememberMe(e.target.checked)}
+                    />
+                    <label className="form-check-label small text-muted cursor-pointer" htmlFor="rememberMe" style={{ userSelect: 'none' }}>
+                      자동 로그인 (브라우저 종료 시에도 로그인 유지)
+                    </label>
                   </div>
 
                   <button

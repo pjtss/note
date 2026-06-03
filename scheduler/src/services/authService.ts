@@ -3,9 +3,9 @@ import { isBrowser } from './scheduleService';
 
 export interface IAuthService {
   getCurrentSession(): Promise<UserSession | null>;
-  register(input: RegisterInput): Promise<UserSession>;
-  login(input: LoginInput): Promise<UserSession>;
-  socialLogin(provider: SocialProvider): Promise<UserSession>;
+  register(input: RegisterInput, rememberMe?: boolean): Promise<UserSession>;
+  login(input: LoginInput, rememberMe?: boolean): Promise<UserSession>;
+  socialLogin(provider: SocialProvider, rememberMe?: boolean): Promise<UserSession>;
   logout(): Promise<void>;
   getAccessToken(): string | null;
 }
@@ -20,17 +20,26 @@ export class JwtAuthService implements IAuthService {
 
   getAccessToken(): string | null {
     if (!this.currentAccessToken && isBrowser.check()) {
-      this.currentAccessToken = localStorage.getItem(this.ACCESS_TOKEN_KEY);
+      this.currentAccessToken = localStorage.getItem(this.ACCESS_TOKEN_KEY) || sessionStorage.getItem(this.ACCESS_TOKEN_KEY);
     }
     return this.currentAccessToken;
   }
 
-  private saveTokens(accessToken: string, refreshToken: string, user: UserSession) {
+  private saveTokens(accessToken: string, refreshToken: string, user: UserSession, rememberMe: boolean = true) {
     if (!isBrowser.check()) return;
     this.currentAccessToken = accessToken;
-    localStorage.setItem(this.ACCESS_TOKEN_KEY, accessToken);
-    localStorage.setItem(this.REFRESH_TOKEN_KEY, refreshToken); // 기기(localStorage) 보관 규정 수호
-    localStorage.setItem(this.USER_SESSION_KEY, JSON.stringify(user));
+
+    const activeStorage = rememberMe ? localStorage : sessionStorage;
+    const inactiveStorage = rememberMe ? sessionStorage : localStorage;
+
+    // 비활성화 저장소의 토큰 삭제하여 저장소 이관 및 정합성 보증
+    inactiveStorage.removeItem(this.ACCESS_TOKEN_KEY);
+    inactiveStorage.removeItem(this.REFRESH_TOKEN_KEY);
+    inactiveStorage.removeItem(this.USER_SESSION_KEY);
+
+    activeStorage.setItem(this.ACCESS_TOKEN_KEY, accessToken);
+    activeStorage.setItem(this.REFRESH_TOKEN_KEY, refreshToken);
+    activeStorage.setItem(this.USER_SESSION_KEY, JSON.stringify(user));
   }
 
   private clearTokens() {
@@ -39,6 +48,9 @@ export class JwtAuthService implements IAuthService {
     localStorage.removeItem(this.ACCESS_TOKEN_KEY);
     localStorage.removeItem(this.REFRESH_TOKEN_KEY);
     localStorage.removeItem(this.USER_SESSION_KEY);
+    sessionStorage.removeItem(this.ACCESS_TOKEN_KEY);
+    sessionStorage.removeItem(this.REFRESH_TOKEN_KEY);
+    sessionStorage.removeItem(this.USER_SESSION_KEY);
   }
 
   /**
@@ -47,8 +59,8 @@ export class JwtAuthService implements IAuthService {
   async getCurrentSession(): Promise<UserSession | null> {
     if (!isBrowser.check()) return null;
 
-    const savedUser = localStorage.getItem(this.USER_SESSION_KEY);
-    const refreshToken = localStorage.getItem(this.REFRESH_TOKEN_KEY);
+    const savedUser = localStorage.getItem(this.USER_SESSION_KEY) || sessionStorage.getItem(this.USER_SESSION_KEY);
+    const refreshToken = localStorage.getItem(this.REFRESH_TOKEN_KEY) || sessionStorage.getItem(this.REFRESH_TOKEN_KEY);
 
     if (!savedUser || !refreshToken) {
       this.clearTokens();
@@ -59,10 +71,11 @@ export class JwtAuthService implements IAuthService {
       const userObj = JSON.parse(savedUser);
       // AccessToken이 있나 확인
       const accessToken = this.getAccessToken();
+      const isLocal = !!localStorage.getItem(this.REFRESH_TOKEN_KEY);
 
       if (!accessToken) {
         // AccessToken이 없으면 기기 내 RefreshToken을 통해 자동 갱신(RTR) 시도
-        return await this.refreshTokensFlow(refreshToken);
+        return await this.refreshTokensFlow(refreshToken, isLocal);
       }
 
       // 토큰 페이로드 만료 여부 가검사 (10분 만료 여부)
@@ -72,7 +85,7 @@ export class JwtAuthService implements IAuthService {
         const now = Math.floor(Date.now() / 1000);
         // 만료되기 30초 전이거나 만료되었다면 사전에 조용히 갱신 처리
         if (decoded.exp - now < 30) {
-          return await this.refreshTokensFlow(refreshToken);
+          return await this.refreshTokensFlow(refreshToken, isLocal);
         }
       }
 
@@ -81,7 +94,8 @@ export class JwtAuthService implements IAuthService {
       // 파싱 실패 또는 만료 시 리프레시 재시도
       if (refreshToken) {
         try {
-          return await this.refreshTokensFlow(refreshToken);
+          const isLocal = !!localStorage.getItem(this.REFRESH_TOKEN_KEY);
+          return await this.refreshTokensFlow(refreshToken, isLocal);
         } catch {
           this.clearTokens();
           return null;
@@ -95,7 +109,7 @@ export class JwtAuthService implements IAuthService {
   /**
    * 리프레시 토큰 로테이션(RTR) 서버 타격 갱신
    */
-  private async refreshTokensFlow(refreshToken: string): Promise<UserSession> {
+  private async refreshTokensFlow(refreshToken: string, rememberMe: boolean): Promise<UserSession> {
     const res = await fetch('/api/auth/refresh', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -115,11 +129,11 @@ export class JwtAuthService implements IAuthService {
       createdAt: new Date().toISOString()
     };
 
-    this.saveTokens(data.accessToken, data.refreshToken, newUserSession);
+    this.saveTokens(data.accessToken, data.refreshToken, newUserSession, rememberMe);
     return newUserSession;
   }
 
-  async register(input: RegisterInput): Promise<UserSession> {
+  async register(input: RegisterInput, rememberMe: boolean = true): Promise<UserSession> {
     const res = await fetch('/api/auth/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -139,11 +153,11 @@ export class JwtAuthService implements IAuthService {
       createdAt: data.user.createdAt
     };
 
-    this.saveTokens(data.accessToken, data.refreshToken, userSession);
+    this.saveTokens(data.accessToken, data.refreshToken, userSession, rememberMe);
     return userSession;
   }
 
-  async login(input: LoginInput): Promise<UserSession> {
+  async login(input: LoginInput, rememberMe: boolean = true): Promise<UserSession> {
     const res = await fetch('/api/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -163,11 +177,11 @@ export class JwtAuthService implements IAuthService {
       createdAt: data.user.createdAt
     };
 
-    this.saveTokens(data.accessToken, data.refreshToken, userSession);
+    this.saveTokens(data.accessToken, data.refreshToken, userSession, rememberMe);
     return userSession;
   }
 
-  async socialLogin(provider: SocialProvider): Promise<UserSession> {
+  async socialLogin(provider: SocialProvider, rememberMe: boolean = true): Promise<UserSession> {
     // 소셜 로그인 모의 인증: 클라이언트 사이드 가상 모의 세션 즉시 제공 및 JWT 발급
     const socialUsernames: Record<SocialProvider, string> = {
       google: 'google_user@gmail.com',
@@ -203,13 +217,13 @@ export class JwtAuthService implements IAuthService {
     const mockAccessToken = `${header}.${payload}.mock-sig`;
     const mockRefreshToken = `${header}.${payload}.mock-refresh-sig`;
 
-    this.saveTokens(mockAccessToken, mockRefreshToken, mockUser);
+    this.saveTokens(mockAccessToken, mockRefreshToken, mockUser, rememberMe);
     return mockUser;
   }
 
   async logout(): Promise<void> {
     if (isBrowser.check()) {
-      const refreshToken = localStorage.getItem(this.REFRESH_TOKEN_KEY);
+      const refreshToken = localStorage.getItem(this.REFRESH_TOKEN_KEY) || sessionStorage.getItem(this.REFRESH_TOKEN_KEY);
       if (refreshToken) {
         await fetch('/api/auth/logout', {
           method: 'POST',

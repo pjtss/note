@@ -1,7 +1,5 @@
 import { NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { prisma } from '../../../../lib/db';
 
 export async function POST(request: Request) {
   try {
@@ -21,7 +19,5 @@ export async function POST(request: Request) {
       { error: err.message || '로그아웃 토큰 폐기 중 서버 장해가 발생했습니다.' },
       { status: 500 }
     );
-  } finally {
-    await prisma.$disconnect();
   }
 }

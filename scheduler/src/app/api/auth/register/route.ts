@@ -1,9 +1,7 @@
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../../../../lib/db';
 import { JwtService } from '../../../../services/jwtService';
-
-const prisma = new PrismaClient();
 
 // 단방향 비밀번호 해싱 알고리즘 헬퍼
 export function hashPassword(password: string): string {
@@ -82,7 +80,5 @@ export async function POST(request: Request) {
       { error: err.message || '회원가입 진행 중 오류가 발생했습니다.' },
       { status: 500 }
     );
-  } finally {
-    await prisma.$disconnect();
   }
 }
