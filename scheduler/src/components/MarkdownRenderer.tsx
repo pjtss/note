@@ -5,6 +5,7 @@ interface MarkdownRendererProps {
   className?: string;
   isDarkColor?: boolean;
   isSummary?: boolean; // 요약 카드 뷰용 모드
+  onTodoToggle?: (lineIndex: number) => void;
 }
 
 // 1. 프리미엄 구문 강조 엔진 (Syntax Highlighter)
@@ -74,7 +75,8 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
   content, 
   className = '',
   isDarkColor = false,
-  isSummary = false
+  isSummary = false,
+  onTodoToggle
 }) => {
   const [copySuccess, setCopySuccess] = useState<string | null>(null);
 
@@ -138,12 +140,30 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
     let inOl = false;
     const processedLines: string[] = [];
 
-    for (let line of lines) {
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
       const trimmed = line.trim();
+      const todoMatch = trimmed.match(/^[-*]\s+\[( |x)\]\s+(.+)$/i);
       const ulMatch = trimmed.match(/^[-*]\s+(.+)$/);
       const olMatch = trimmed.match(/^(\d+)\.\s+(.+)$/);
 
-      if (ulMatch) {
+      if (todoMatch) {
+        if (inOl) {
+          processedLines.push('</ol>');
+          inOl = false;
+        }
+        if (!inUl) {
+          processedLines.push('<ul class="my-2 text-start list-unstyled" style="padding-left: 0;">');
+          inUl = true;
+        }
+        const isChecked = todoMatch[1].toLowerCase() === 'x';
+        const checkboxHtml = isChecked
+          ? `<i class="bi bi-check-square-fill text-primary me-2 cursor-pointer todo-toggle" data-line-index="${i}" style="font-size: 1.05rem; vertical-align: middle;"></i>`
+          : `<i class="bi bi-square text-muted me-2 cursor-pointer todo-toggle" data-line-index="${i}" style="font-size: 1.05rem; vertical-align: middle;"></i>`;
+        
+        const textStyle = isChecked ? 'text-decoration: line-through; opacity: 0.6;' : '';
+        processedLines.push(`<li class="small my-1.5 d-flex align-items-center" style="line-height: 1.6; ${textStyle}">${checkboxHtml}<span>${todoMatch[2]}</span></li>`);
+      } else if (ulMatch) {
         if (inOl) {
           processedLines.push('</ol>');
           inOl = false;
@@ -207,7 +227,9 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
       .replace(/`([^`]+)`/g, '$1')
       .replace(/\*\*([\s\S]+?)\*\*/g, '$1')
       .replace(/\*([\s\S]+?)\*/g, '$1')
-      .replace(/~~([\s\S]+?)~~/g, '$1');
+      .replace(/~~([\s\S]+?)~~/g, '$1')
+      .replace(/^[-*]\s+\[\s*\]\s+(.+)$/gm, '⬜ $1')
+      .replace(/^[-*]\s+\[[xX]\]\s+(.+)$/gm, '✅ $1');
 
     return (
       <p 
@@ -352,8 +374,19 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
     });
   };
 
+  const handleContainerClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLElement;
+    if (target.classList.contains('todo-toggle') && onTodoToggle) {
+      const lineIndexAttr = target.getAttribute('data-line-index');
+      if (lineIndexAttr !== null) {
+        const lineIndex = parseInt(lineIndexAttr, 10);
+        onTodoToggle(lineIndex);
+      }
+    }
+  };
+
   return (
-    <div className={`markdown-body ${className}`}>
+    <div className={`markdown-body ${className}`} onClick={handleContainerClick}>
       {isSummary ? renderSummaryText() : renderFullMarkdown()}
     </div>
   );

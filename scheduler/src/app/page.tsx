@@ -741,6 +741,33 @@ ${memo.content}`;
     setMemoColor('#fffbeb');
   };
 
+  // 메모 에디터 내 슬래시 커맨드 (/checkbox) 감지 및 자동 치환
+  const handleMemoContentKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === ' ' || e.key === 'Enter') {
+      const textarea = e.currentTarget;
+      const value = textarea.value;
+      const selectionStart = textarea.selectionStart;
+      
+      const textBeforeCursor = value.substring(0, selectionStart);
+      
+      if (textBeforeCursor.endsWith('/checkbox')) {
+        e.preventDefault(); // 스페이스나 엔터 자체 입력 차단
+        
+        const startPos = selectionStart - 9; // '/checkbox'.length = 9
+        const endPos = selectionStart;
+        
+        const newValue = value.substring(0, startPos) + '- [ ] ' + (e.key === 'Enter' ? '\n' : '') + value.substring(endPos);
+        setMemoContent(newValue);
+        
+        const newCursorPos = startPos + 6 + (e.key === 'Enter' ? 1 : 0); // '- [ ] '.length = 6
+        setTimeout(() => {
+          textarea.focus();
+          textarea.setSelectionRange(newCursorPos, newCursorPos);
+        }, 0);
+      }
+    }
+  };
+
   // 삭제 처리 핸들러
   const handleDeleteConfirm = async () => {
     if (!deleteConfirmTarget) return;
@@ -1471,9 +1498,10 @@ ${memo.content}`;
                           id="memoContent"
                           className="form-control form-premium-control"
                           rows={5}
-                          placeholder="자유롭게 생각을 기록해 보세요..."
+                          placeholder="자유롭게 생각을 기록해 보세요... (/checkbox 입력 시 체크박스로 자동 변환)"
                           value={memoContent}
                           onChange={(e) => setMemoContent(e.target.value)}
+                          onKeyDown={handleMemoContentKeyDown}
                           required
                           style={{ fontFamily: getSelectedFontCss() }}
                         />
@@ -1780,7 +1808,31 @@ ${memo.content}`;
                 fontSize: '0.95rem'
               }}
             >
-              <MarkdownRenderer content={selectedMemo.content} isDarkColor={checkIfDarkColor(selectedMemo.color || '#fffbeb')} />
+              <MarkdownRenderer 
+                content={selectedMemo.content} 
+                isDarkColor={checkIfDarkColor(selectedMemo.color || '#fffbeb')} 
+                onTodoToggle={async (lineIndex) => {
+                  const lines = (selectedMemo.content || '').split('\n');
+                  if (lines[lineIndex] !== undefined) {
+                    const line = lines[lineIndex];
+                    if (line.match(/^(\s*[-*]\s+\[)\s(\].*)$/)) {
+                      lines[lineIndex] = line.replace(/^(\s*[-*]\s+\[)\s(\].*)$/, '$1x$2');
+                    } else if (line.match(/^(\s*[-*]\s+\[)[xX](\].*)$/)) {
+                      lines[lineIndex] = line.replace(/^(\s*[-*]\s+\[)[xX](\].*)$/, '$1 $2');
+                    }
+                    const newContent = lines.join('\n');
+                    await editMemo(selectedMemo.id, {
+                      title: selectedMemo.title,
+                      content: newContent,
+                      color: selectedMemo.color
+                    });
+                    setSelectedMemo({
+                      ...selectedMemo,
+                      content: newContent
+                    });
+                  }
+                }}
+              />
             </div>
 
             {/* Modal Footer Controls */}
