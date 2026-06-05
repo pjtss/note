@@ -40,7 +40,7 @@ export default function RootLayout({
           href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" 
         />
       </head>
-      <body className="bg-light text-dark">
+      <body>
         {children}
         {/* Bootstrap 5.3.3 JS Bundle */}
         <script 
