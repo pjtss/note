@@ -983,18 +983,35 @@ ${memo.content}`;
 
           {/* Tab Navigation Center Router (Only visible when logged in) */}
           {user && (
-            <div className="d-flex bg-light p-1 rounded-pill border border-light-subtle shadow-inner mx-auto my-lg-0 my-3">
+            <div 
+              className="d-flex p-1 rounded-pill mx-auto my-lg-0 my-3"
+              style={{
+                backgroundColor: 'rgba(255, 255, 255, 0.04)',
+                border: '1px solid rgba(99, 102, 241, 0.25)',
+                boxShadow: 'inset 0 2px 4px rgba(0, 0, 0, 0.2)'
+              }}
+            >
               <button
                 onClick={() => setActiveTab('schedule')}
-                className={`btn btn-sm px-4 py-2 rounded-pill fw-semibold transition-all ${activeTab === 'schedule' ? 'btn-primary text-white shadow-sm' : 'btn-light text-secondary border-0'}`}
-                style={{ fontSize: '0.9rem' }}
+                className="btn btn-sm px-4 py-2 rounded-pill fw-semibold transition-all border-0"
+                style={{ 
+                  fontSize: '0.9rem',
+                  background: activeTab === 'schedule' ? 'var(--primary-gradient)' : 'transparent',
+                  color: activeTab === 'schedule' ? '#ffffff' : '#94a3b8',
+                  boxShadow: activeTab === 'schedule' ? '0 0 10px rgba(99, 102, 241, 0.4)' : 'none'
+                }}
               >
                 <i className="bi bi-calendar3 me-2"></i>일정 관리
               </button>
               <button
                 onClick={() => setActiveTab('memo')}
-                className={`btn btn-sm px-4 py-2 rounded-pill fw-semibold transition-all ${activeTab === 'memo' ? 'btn-primary text-white shadow-sm' : 'btn-light text-secondary border-0'}`}
-                style={{ fontSize: '0.9rem' }}
+                className="btn btn-sm px-4 py-2 rounded-pill fw-semibold transition-all border-0"
+                style={{ 
+                  fontSize: '0.9rem',
+                  background: activeTab === 'memo' ? 'var(--primary-gradient)' : 'transparent',
+                  color: activeTab === 'memo' ? '#ffffff' : '#94a3b8',
+                  boxShadow: activeTab === 'memo' ? '0 0 10px rgba(99, 102, 241, 0.4)' : 'none'
+                }}
               >
                 <i className="bi bi-sticky-fill me-2"></i>메모패드
               </button>
@@ -1005,7 +1022,14 @@ ${memo.content}`;
             {/* User Session Area */}
             {user ? (
               <div className="d-flex align-items-center gap-3">
-                <span className="small text-secondary fw-semibold d-flex align-items-center gap-1 bg-white px-3 py-2 rounded-pill shadow-sm border border-light-subtle">
+                <span 
+                  className="small fw-semibold d-flex align-items-center gap-1 px-3 py-2 rounded-pill shadow-sm"
+                  style={{
+                    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+                    border: '1px solid rgba(255, 255, 255, 0.08)',
+                    color: '#cbd5e1'
+                  }}
+                >
                   {user.provider === 'google' && <i className="bi bi-google text-danger"></i>}
                   {user.provider === 'kakao' && <i className="bi bi-chat-fill text-warning"></i>}
                   {user.provider === 'naver' && <i className="bi bi-n-circle-fill text-success"></i>}
@@ -1015,13 +1039,20 @@ ${memo.content}`;
                 <button
                   onClick={signOutUser}
                   className="btn btn-sm btn-outline-danger rounded-pill px-3 py-2"
-                  style={{ fontSize: '0.8rem' }}
+                  style={{ fontSize: '0.8rem', border: '1px solid rgba(239, 68, 68, 0.4)' }}
                 >
                   <i className="bi bi-box-arrow-right me-1"></i>로그아웃
                 </button>
               </div>
             ) : (
-              <span className="badge bg-secondary-subtle text-secondary border border-secondary-subtle px-3 py-2 rounded-pill">
+              <span 
+                className="badge px-3 py-2 rounded-pill border"
+                style={{
+                  backgroundColor: 'rgba(255, 255, 255, 0.04)',
+                  borderColor: 'rgba(255, 255, 255, 0.08)',
+                  color: '#94a3b8'
+                }}
+              >
                 인증이 필요합니다
               </span>
             )}
@@ -1039,22 +1070,23 @@ ${memo.content}`;
             <div className="col-md-6 col-lg-5">
               {/* 회전 무지개 광선 테두리 느낌의 프리미엄 로그인 박스 */}
               <div 
-                className="premium-card p-5 shadow-lg position-relative overflow-hidden border-0 rounded-4 bg-white"
+                className="premium-card p-5 position-relative overflow-hidden rounded-4"
                 style={{ 
-                  boxShadow: '0 20px 50px rgba(0, 0, 0, 0.08)',
-                  borderTop: '5px solid #0d6efd'
+                  backgroundColor: 'rgba(15, 18, 36, 0.85)',
+                  border: '1px solid rgba(99, 102, 241, 0.25)',
+                  boxShadow: '0 0 30px rgba(99, 102, 241, 0.15), 0 15px 45px rgba(0, 0, 0, 0.65)'
                 }}
               >
                 <div className="text-center mb-4">
-                  <div className="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center p-3 mb-3 shadow-sm" style={{ width: '56px', height: '56px' }}>
+                  <div className="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center p-3 mb-3 shadow-sm" style={{ width: '56px', height: '56px', background: 'var(--primary-gradient)' }}>
                     <i className="bi bi-shield-lock-fill fs-3"></i>
                   </div>
-                  <h4 className="fw-bold mb-1 display-font text-dark">Antigravity Portal</h4>
-                  <p className="text-muted small">프리미엄 일정 & 메모패드 연동 계정 인증</p>
+                  <h4 className="fw-bold mb-1 display-font text-white">Antigravity Portal</h4>
+                  <p className="text-secondary small">프리미엄 일정 & 메모패드 연동 계정 인증</p>
                 </div>
 
                 {authError && (
-                  <div className="alert alert-danger border-0 small rounded-3 d-flex align-items-center gap-2 mb-3" role="alert">
+                  <div className="alert alert-danger border-0 small rounded-3 d-flex align-items-center gap-2 mb-3" style={{ backgroundColor: 'rgba(239, 68, 68, 0.15)', color: '#f87171', border: '1px solid rgba(239, 68, 68, 0.2)' }} role="alert">
                     <i className="bi bi-exclamation-triangle-fill fs-6"></i>
                     <div>{authError}</div>
                   </div>
@@ -1064,8 +1096,12 @@ ${memo.content}`;
                 <div className="d-flex flex-column gap-2 mb-4">
                   <button
                     onClick={() => signInSocial('google', rememberMe)}
-                    className="btn btn-outline-dark w-100 rounded-pill py-2.5 d-flex align-items-center justify-content-center gap-2 border border-light-subtle shadow-sm transition-all"
-                    style={{ fontSize: '0.9rem', backgroundColor: '#ffffff' }}
+                    className="btn w-100 rounded-pill py-2.5 d-flex align-items-center justify-content-center gap-2 transition-all text-white border"
+                    style={{ 
+                      fontSize: '0.9rem', 
+                      backgroundColor: 'rgba(255, 255, 255, 0.06)',
+                      borderColor: 'rgba(255, 255, 255, 0.12)'
+                    }}
                   >
                     <i className="bi bi-google text-danger fs-5"></i>
                     <strong>Google</strong> 계정으로 로그인
@@ -1089,8 +1125,16 @@ ${memo.content}`;
                 </div>
 
                 <div className="position-relative text-center my-4">
-                  <hr className="text-muted" />
-                  <span className="position-absolute top-50 start-50 translate-middle bg-white px-3 text-muted small" style={{ fontSize: '0.75rem' }}>
+                  <hr className="text-secondary" style={{ opacity: 0.25 }} />
+                  <span 
+                    className="position-absolute top-50 start-50 translate-middle px-3 text-secondary small border" 
+                    style={{ 
+                      fontSize: '0.75rem',
+                      backgroundColor: '#121424',
+                      borderColor: 'rgba(255, 255, 255, 0.08)',
+                      borderRadius: '12px'
+                    }}
+                  >
                     또는 일반 계정 이용
                   </span>
                 </div>
@@ -1099,7 +1143,7 @@ ${memo.content}`;
                 <form onSubmit={handleAuthSubmit}>
                   {authMode === 'register' && (
                     <div className="mb-3">
-                      <label htmlFor="authDisplayName" className="form-label small fw-semibold text-muted">이름 또는 닉네임 *</label>
+                      <label htmlFor="authDisplayName" className="form-label small fw-semibold text-secondary">이름 또는 닉네임 *</label>
                       <input
                         type="text"
                         id="authDisplayName"
@@ -1113,7 +1157,7 @@ ${memo.content}`;
                   )}
 
                   <div className="mb-3">
-                    <label htmlFor="authUsername" className="form-label small fw-semibold text-muted">아이디 (이메일 주소) *</label>
+                    <label htmlFor="authUsername" className="form-label small fw-semibold text-secondary">아이디 (이메일 주소) *</label>
                     <input
                       type="email"
                       id="authUsername"
@@ -1126,7 +1170,7 @@ ${memo.content}`;
                   </div>
 
                   <div className="mb-3">
-                    <label htmlFor="authPassword" className="form-label small fw-semibold text-muted">비밀번호 *</label>
+                    <label htmlFor="authPassword" className="form-label small fw-semibold text-secondary">비밀번호 *</label>
                     <input
                       type="password"
                       id="authPassword"
@@ -1145,27 +1189,28 @@ ${memo.content}`;
                       id="rememberMe"
                       checked={rememberMe}
                       onChange={(e) => setRememberMe(e.target.checked)}
+                      style={{ backgroundColor: rememberMe ? '#6366f1' : 'transparent', borderColor: 'rgba(255,255,255,0.2)' }}
                     />
-                    <label className="form-check-label small text-muted cursor-pointer" htmlFor="rememberMe" style={{ userSelect: 'none' }}>
+                    <label className="form-check-label small text-secondary cursor-pointer" htmlFor="rememberMe" style={{ userSelect: 'none' }}>
                       자동 로그인 (브라우저 종료 시에도 로그인 유지)
                     </label>
                   </div>
 
                   <button
                     type="submit"
-                    className="btn btn-primary w-100 rounded-pill py-2.5 fw-bold shadow-sm transition-all"
+                    className="btn btn-premium-primary w-100 rounded-pill py-2.5 fw-bold shadow-sm transition-all"
                   >
                     {authMode === 'login' ? '로그인' : '회원가입 완료'}
                   </button>
 
-                  <div className="text-center mt-3 small text-muted">
+                  <div className="text-center mt-3 small text-secondary">
                     {authMode === 'login' ? (
                       <>
                         아직 계정이 없으신가요?{' '}
                         <button
                           type="button"
                           onClick={() => { setAuthMode('register'); setAuthError(null); }}
-                          className="btn btn-link p-0 text-primary fw-semibold small text-decoration-underline"
+                          className="btn btn-link p-0 text-info fw-semibold small text-decoration-underline"
                         >
                           회원가입하기
                         </button>
@@ -1176,7 +1221,7 @@ ${memo.content}`;
                         <button
                           type="button"
                           onClick={() => { setAuthMode('login'); setAuthError(null); }}
-                          className="btn btn-link p-0 text-primary fw-semibold small text-decoration-underline"
+                          className="btn btn-link p-0 text-info fw-semibold small text-decoration-underline"
                         >
                           로그인하기
                         </button>
@@ -1298,14 +1343,14 @@ ${memo.content}`;
                       {/* Filters Header Bar */}
                       {/* 9. 카테고리별 컬러 칩 및 원클릭 퀵 필터 */}
                       <div className="d-flex flex-wrap gap-2 mb-3 align-items-center">
-                        <span className="text-muted small fw-semibold me-1">카테고리 퀵 필터:</span>
+                        <span className="text-secondary small fw-semibold me-1">카테고리 퀵 필터:</span>
                         {[
-                          { value: 'All', label: '📁 전체', bg: 'bg-light text-dark' },
-                          { value: 'Work', label: '🏢 업무', bg: 'bg-primary-subtle text-primary' },
-                          { value: 'Personal', label: '🏡 개인', bg: 'bg-success-subtle text-success' },
-                          { value: 'Important', label: '⭐ 중요', bg: 'bg-danger-subtle text-danger' },
-                          { value: 'Meeting', label: '👥 회의', bg: 'bg-info-subtle text-info' },
-                          { value: 'Etc', label: '🏷️ 기타', bg: 'bg-secondary-subtle text-secondary' },
+                          { value: 'All', label: '📁 전체' },
+                          { value: 'Work', label: '🏢 업무' },
+                          { value: 'Personal', label: '🏡 개인' },
+                          { value: 'Important', label: '⭐ 중요' },
+                          { value: 'Meeting', label: '👥 회의' },
+                          { value: 'Etc', label: '🏷️ 기타' },
                         ].map((chip) => {
                           const isSelected = categoryFilter === chip.value;
                           const count = chip.value === 'All' 
@@ -1316,17 +1361,19 @@ ${memo.content}`;
                             <button
                               key={chip.value}
                               onClick={() => setCategoryFilter(chip.value)}
-                              className={`btn btn-sm px-2.5 py-1 rounded-pill d-flex align-items-center gap-1.5 transition-all border-0 ${isSelected ? 'fw-bold text-white shadow-sm' : chip.bg}`}
+                              className="btn btn-sm px-2.5 py-1 rounded-pill d-flex align-items-center gap-1.5 transition-all border-0"
                               style={{
                                 fontSize: '0.75rem',
                                 background: isSelected 
-                                  ? 'linear-gradient(135deg, #3b82f6, #6366f1)' 
-                                  : undefined,
-                                outline: isSelected ? '2px solid rgba(99, 102, 241, 0.4)' : 'none'
+                                  ? 'linear-gradient(135deg, #6366f1, #a855f7)' 
+                                  : 'rgba(255, 255, 255, 0.05)',
+                                color: isSelected ? '#ffffff' : '#94a3b8',
+                                border: `1px solid ${isSelected ? 'rgba(99, 102, 241, 0.4)' : 'rgba(255, 255, 255, 0.08)'}`,
+                                boxShadow: isSelected ? '0 0 10px rgba(99, 102, 241, 0.4)' : 'none'
                               }}
                             >
                               <span>{chip.label}</span>
-                              <span className={`badge rounded-pill ${isSelected ? 'bg-white text-primary' : 'bg-white-subtle-overlay text-dark'}`} style={{ fontSize: '0.65rem', backgroundColor: 'rgba(0,0,0,0.06)' }}>
+                              <span className="badge rounded-pill" style={{ fontSize: '0.65rem', backgroundColor: isSelected ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.08)', color: isSelected ? '#ffffff' : '#cbd5e1' }}>
                                 {count}
                               </span>
                             </button>
@@ -1337,7 +1384,7 @@ ${memo.content}`;
                       <div className="row g-3 align-items-center mb-4">
                         <div className="col-md-5">
                           <div className="input-group">
-                            <span className="input-group-text bg-white border-end-0 rounded-start-pill text-muted">
+                            <span className="input-group-text border-end-0 rounded-start-pill text-secondary" style={{ backgroundColor: 'rgba(255, 255, 255, 0.03)', borderColor: 'rgba(255, 255, 255, 0.1)' }}>
                               <i className="bi bi-search"></i>
                             </span>
                             <input
@@ -1390,12 +1437,12 @@ ${memo.content}`;
                           <p className="mt-3 text-muted">일정 목록을 구성하고 있습니다.</p>
                         </div>
                       ) : mySchedules.length === 0 ? (
-                        <div className="text-center py-5 bg-light rounded-4 border border-dashed">
-                          <div className="bg-white rounded-circle shadow-sm d-inline-flex align-items-center justify-content-center p-3 mb-3" style={{ width: '60px', height: '60px' }}>
-                            <i className="bi bi-calendar-x text-muted fs-3"></i>
+                        <div className="text-center py-5 rounded-4 border border-dashed" style={{ backgroundColor: 'rgba(255, 255, 255, 0.02)', borderColor: 'rgba(255, 255, 255, 0.1)' }}>
+                          <div className="rounded-circle shadow-sm d-inline-flex align-items-center justify-content-center p-3 mb-3" style={{ width: '60px', height: '60px', backgroundColor: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.08)' }}>
+                            <i className="bi bi-calendar-x text-secondary fs-3"></i>
                           </div>
-                          <h6 className="fw-bold text-muted mb-1">등록된 일정이 없습니다.</h6>
-                          <p className="text-muted small px-4 mb-0">
+                          <h6 className="fw-bold text-secondary mb-1">등록된 일정이 없습니다.</h6>
+                          <p className="text-secondary small px-4 mb-0" style={{ opacity: 0.7 }}>
                             {searchQuery.trim() !== '' || categoryFilter !== 'All' || completionFilter !== 'All' 
                               ? '설정한 필터 조건에 부합하는 일정이 없습니다. 필터를 해제해보세요.' 
                               : '왼쪽 폼을 활용하여 개인 일정을 새롭게 계획하고 관리해보세요.'}
@@ -1425,16 +1472,26 @@ ${memo.content}`;
                             return (
                               <div 
                                 key={schedule.id}
-                                className={`card border-0 p-3 rounded-4 transition-all position-relative overflow-hidden ${
-                                  schedule.isCompleted 
-                                    ? 'bg-light border-start border-3 border-secondary opacity-75' 
-                                    : isOverdue
-                                      ? 'bg-white border-start border-3 border-danger shadow-sm'
-                                      : 'bg-white border-start border-3 border-primary shadow-sm'
-                                }`}
+                                className="card border-0 p-3 rounded-4 transition-all position-relative overflow-hidden"
                                 style={{ 
                                   transition: 'all 0.2s ease',
-                                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.03)'
+                                  backgroundColor: schedule.isCompleted 
+                                    ? 'rgba(255, 255, 255, 0.02)' 
+                                    : 'rgba(255, 255, 255, 0.04)',
+                                  opacity: schedule.isCompleted ? 0.6 : 1,
+                                  border: '1px solid rgba(255, 255, 255, 0.05)',
+                                  borderLeft: `4px solid ${
+                                    schedule.isCompleted 
+                                      ? '#64748b' 
+                                      : isOverdue
+                                        ? '#f43f5e'
+                                        : '#6366f1'
+                                  }`,
+                                  boxShadow: schedule.isCompleted 
+                                    ? 'none'
+                                    : isOverdue
+                                      ? '0 0 15px rgba(244, 63, 94, 0.15)'
+                                      : '0 0 15px rgba(99, 102, 241, 0.15)'
                                 }}
                               >
                                 <div className="d-flex align-items-start gap-3">
@@ -1568,7 +1625,7 @@ ${memo.content}`;
                     <div className="row g-3 align-items-center mb-4">
                       <div className="col-md-5">
                         <div className="input-group">
-                          <span className="input-group-text bg-white border-end-0 rounded-start-pill text-muted">
+                          <span className="input-group-text border-end-0 rounded-start-pill text-secondary" style={{ backgroundColor: 'rgba(255, 255, 255, 0.03)', borderColor: 'rgba(255, 255, 255, 0.1)' }}>
                             <i className="bi bi-search"></i>
                           </span>
                           <input
@@ -1583,7 +1640,7 @@ ${memo.content}`;
                       </div>
 
                       <div className="col-md-7 d-flex gap-2 justify-content-md-end align-items-center flex-wrap">
-                        <span className="small text-muted fw-semibold me-1"><i className="bi bi-funnel-fill"></i> 색상:</span>
+                        <span className="small text-secondary fw-semibold me-1"><i className="bi bi-funnel-fill"></i> 색상:</span>
                         <select
                           className="form-select form-premium-control w-auto"
                           value={memoColorFilter}
@@ -1596,7 +1653,7 @@ ${memo.content}`;
                           ))}
                         </select>
 
-                        <span className="small text-muted fw-semibold ms-md-2 me-1"><i className="bi bi-fonts"></i> 글꼴:</span>
+                        <span className="small text-secondary fw-semibold ms-md-2 me-1"><i className="bi bi-fonts"></i> 글꼴:</span>
                         <select
                           className="form-select form-premium-control w-auto"
                           value={selectedFont}
@@ -1619,12 +1676,12 @@ ${memo.content}`;
                         <p className="mt-3 text-muted">메모패드를 정돈하고 있습니다.</p>
                       </div>
                     ) : filteredMemos.length === 0 ? (
-                      <div className="text-center py-5 bg-light rounded-4 border border-dashed">
-                        <div className="bg-white rounded-circle shadow-sm d-inline-flex align-items-center justify-content-center p-3 mb-3" style={{ width: '60px', height: '60px' }}>
-                          <i className="bi bi-sticky text-muted fs-3"></i>
+                      <div className="text-center py-5 rounded-4 border border-dashed" style={{ backgroundColor: 'rgba(255, 255, 255, 0.02)', borderColor: 'rgba(255, 255, 255, 0.1)' }}>
+                        <div className="rounded-circle shadow-sm d-inline-flex align-items-center justify-content-center p-3 mb-3" style={{ width: '60px', height: '60px', backgroundColor: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.08)' }}>
+                          <i className="bi bi-sticky text-secondary fs-3"></i>
                         </div>
-                        <h6 className="fw-bold text-muted mb-1">작성된 메모가 없습니다.</h6>
-                        <p className="text-muted small px-4 mb-0">
+                        <h6 className="fw-bold text-secondary mb-1">작성된 메모가 없습니다.</h6>
+                        <p className="text-secondary small px-4 mb-0" style={{ opacity: 0.7 }}>
                           {memoSearchQuery.trim() !== '' || memoColorFilter !== 'All'
                             ? '설정한 필터 조건에 부합하는 메모가 없습니다. 필터를 변경해 보세요.'
                             : '왼쪽 폼을 활용하여 아이디어 영감이나 업무 메모를 자유롭게 채워보세요.'}
@@ -2123,42 +2180,44 @@ ${memo.content}`;
           ) : (
             /* 일정 삭제용 컴팩트 모달 */
             <div 
-              className="premium-card p-4 w-100 rounded-4 border-0 shadow-lg position-relative scale-in bg-white"
+              className="premium-card p-4 w-100 rounded-4 position-relative scale-in"
               style={{
                 maxWidth: '400px',
-                color: '#2b2d42',
-                boxShadow: '0 25px 60px rgba(0, 0, 0, 0.3)',
-                borderTop: '6px solid #dc3545',
+                backgroundColor: 'rgba(15, 18, 36, 0.95)',
+                color: '#e2e8f0',
+                border: '1px solid rgba(244, 63, 94, 0.25)',
+                borderTop: '6px solid #f43f5e',
+                boxShadow: '0 0 25px rgba(244, 63, 94, 0.25), 0 20px 50px rgba(0, 0, 0, 0.65)'
               }}
               onClick={(e) => e.stopPropagation()}
             >
               {/* Header Icon */}
               <div className="text-center mb-3">
-                <div className="bg-danger-subtle text-danger rounded-circle d-inline-flex align-items-center justify-content-center p-3 mb-2 shadow-sm" style={{ width: '56px', height: '56px' }}>
+                <div className="rounded-circle d-inline-flex align-items-center justify-content-center p-3 mb-2 shadow-sm" style={{ width: '56px', height: '56px', backgroundColor: 'rgba(244, 63, 94, 0.15)', color: '#fb7185' }}>
                   <i className="bi bi-exclamation-triangle-fill fs-3"></i>
                 </div>
-                <h5 className="fw-bold mb-1">삭제 확인</h5>
+                <h5 className="fw-bold mb-1 text-white">삭제 확인</h5>
               </div>
 
               {/* Body Text */}
               <div className="text-center py-2 mb-4 text-secondary" style={{ fontSize: '0.95rem', lineHeight: '1.5' }}>
                 삭제하시겠습니까?<br />
-                <small className="text-muted" style={{ fontSize: '0.8rem' }}>(이 작업은 되돌릴 수 없습니다.)</small>
+                <small className="text-secondary" style={{ fontSize: '0.8rem', opacity: 0.6 }}>(이 작업은 되돌릴 수 없습니다.)</small>
               </div>
 
               {/* Footer Buttons */}
               <div className="d-flex gap-2">
                 <button
                   onClick={() => setDeleteConfirmTarget(null)}
-                  className="btn btn-light border w-100 py-2.5 rounded-3 fw-semibold"
-                  style={{ fontSize: '0.9rem' }}
+                  className="btn w-100 py-2.5 rounded-3 fw-semibold border-0"
+                  style={{ fontSize: '0.9rem', backgroundColor: 'rgba(255, 255, 255, 0.05)', color: '#94a3b8', border: '1px solid rgba(255,255,255,0.08)' }}
                 >
                   취소
                 </button>
                 <button
                   onClick={handleDeleteConfirm}
-                  className="btn btn-danger w-100 py-2.5 rounded-3 fw-semibold shadow-sm"
-                  style={{ fontSize: '0.9rem' }}
+                  className="btn w-100 py-2.5 rounded-3 fw-semibold border-0 text-white"
+                  style={{ fontSize: '0.9rem', background: 'linear-gradient(135deg, #f43f5e, #e11d48)', boxShadow: '0 0 10px rgba(244, 63, 94, 0.4)' }}
                 >
                   삭제
                 </button>
@@ -2181,24 +2240,26 @@ ${memo.content}`;
           onClick={handleCancelEdit}
         >
           <div 
-            className="premium-card p-4 w-100 rounded-4 border-0 shadow-lg position-relative scale-in bg-white"
+            className="premium-card p-4 w-100 rounded-4 position-relative scale-in"
             style={{
               maxWidth: '500px',
-              color: '#2b2d42',
-              boxShadow: '0 25px 60px rgba(0, 0, 0, 0.3)',
-              borderTop: `6px solid ${editingScheduleId ? '#ffbd2e' : '#0d6efd'}`
+              backgroundColor: 'rgba(15, 18, 36, 0.95)',
+              color: '#cbd5e1',
+              border: `1px solid ${editingScheduleId ? 'rgba(245, 158, 11, 0.25)' : 'rgba(99, 102, 241, 0.25)'}`,
+              borderTop: `6px solid ${editingScheduleId ? '#f59e0b' : '#6366f1'}`,
+              boxShadow: `0 0 30px ${editingScheduleId ? 'rgba(245, 158, 11, 0.15)' : 'rgba(99, 102, 241, 0.15)'}, 0 20px 50px rgba(0, 0, 0, 0.6)`
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="d-flex align-items-center justify-content-between mb-4 border-bottom pb-2" style={{ borderColor: 'rgba(0,0,0,0.08)' }}>
-              <h5 className="fw-bold mb-0 d-flex align-items-center gap-2" style={{ color: 'inherit' }}>
+            <div className="d-flex align-items-center justify-content-between mb-4 border-bottom pb-2" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
+              <h5 className="fw-bold mb-0 d-flex align-items-center gap-2" style={{ color: '#ffffff' }}>
                 <i className={`bi ${editingScheduleId ? 'bi-pencil-square text-warning' : 'bi-plus-circle-fill text-primary'}`}></i>
                 {editingScheduleId ? '일정 수정하기' : '새로운 일정 등록'}
               </h5>
               <button 
                 onClick={handleCancelEdit}
                 className="btn btn-sm rounded-circle d-flex align-items-center justify-content-center border-0 p-2"
-                style={{ backgroundColor: 'rgba(0,0,0,0.06)', width: '32px', height: '32px', color: 'inherit' }}
+                style={{ backgroundColor: 'rgba(255, 255, 255, 0.06)', width: '32px', height: '32px', color: '#94a3b8' }}
               >
                 <i className="bi bi-x-lg"></i>
               </button>
@@ -2428,24 +2489,26 @@ ${memo.content}`;
           onClick={handleCancelMemoEdit}
         >
           <div 
-            className="w-100 h-100 border-0 shadow-lg position-relative scale-in bg-white d-flex flex-column"
+            className="w-100 h-100 border-0 position-relative scale-in d-flex flex-column"
             style={{
-              color: '#2b2d42',
-              borderTop: `6px solid ${editingMemoId ? '#ffbd2e' : '#0d6efd'}`,
+              backgroundColor: 'rgba(11, 13, 26, 0.97)',
+              color: '#cbd5e1',
+              borderTop: `6px solid ${editingMemoId ? '#f59e0b' : '#6366f1'}`,
+              boxShadow: `0 0 35px ${editingMemoId ? 'rgba(245, 158, 11, 0.2)' : 'rgba(99, 102, 241, 0.2)'}`,
               borderRadius: 0,
               padding: '2.5rem'
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="d-flex align-items-center justify-content-between mb-4 border-bottom pb-2" style={{ borderColor: 'rgba(0,0,0,0.08)' }}>
-              <h5 className="fw-bold mb-0 h4 d-flex align-items-center gap-2" style={{ color: 'inherit' }}>
+            <div className="d-flex align-items-center justify-content-between mb-4 border-bottom pb-2" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
+              <h5 className="fw-bold mb-0 h4 d-flex align-items-center gap-2" style={{ color: '#ffffff' }}>
                 <i className={`bi ${editingMemoId ? 'bi-sticky text-warning' : 'bi-sticky-fill text-primary'}`}></i>
                 {editingMemoId ? '메모 수정하기' : '새로운 메모 등록'}
               </h5>
               <button 
                 onClick={handleCancelMemoEdit}
                 className="btn btn-sm rounded-circle d-flex align-items-center justify-content-center border-0 p-2"
-                style={{ backgroundColor: 'rgba(0,0,0,0.06)', width: '36px', height: '36px', color: 'inherit' }}
+                style={{ backgroundColor: 'rgba(255, 255, 255, 0.06)', width: '36px', height: '36px', color: '#94a3b8' }}
               >
                 <i className="bi bi-x-lg fs-5"></i>
               </button>
@@ -2634,11 +2697,17 @@ ${memo.content}`;
       )}
 
       {/* Elegant Footer */}
-      <footer className="py-5 mt-5 bg-white border-top">
+      <footer 
+        className="py-5 mt-5"
+        style={{ 
+          backgroundColor: 'rgba(8, 10, 20, 0.85)', 
+          borderTop: '1px solid rgba(99, 102, 241, 0.15)'
+        }}
+      >
         <div className="container text-center">
-          <p className="mb-1 fw-bold text-primary display-font">Antigravity Note</p>
-          <p className="text-muted small mb-0">Premium Planner & Elegant Memory Pad Service.</p>
-          <p className="text-muted" style={{ fontSize: '0.7rem', marginTop: '4px' }}>
+          <p className="mb-1 fw-bold display-font" style={{ color: '#ffffff', background: 'var(--primary-gradient)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', display: 'inline-block' }}>Antigravity Note</p>
+          <p className="text-secondary small mb-0" style={{ opacity: 0.75 }}>Premium Planner & Elegant Memory Pad Service.</p>
+          <p className="text-secondary" style={{ fontSize: '0.7rem', marginTop: '4px', opacity: 0.5 }}>
             Built with Next.js App Router, Supabase, and Bootstrap 5.
           </p>
         </div>
