@@ -86,6 +86,10 @@ export default function Home() {
   const [memoColorFilter, setMemoColorFilter] = useState('All');
   const [selectedMemo, setSelectedMemo] = useState<Memo | null>(null);
 
+  // 메모 상세 모달 제어 버튼들의 호버 상태 관리
+  const [closeHovered, setCloseHovered] = useState(false);
+  const [hoveredAction, setHoveredAction] = useState<'copy' | 'edit' | 'delete' | null>(null);
+
   // 삭제 확인 모달용 상태
   const [deleteConfirmTarget, setDeleteConfirmTarget] = useState<{
     type: 'schedule' | 'memo';
@@ -131,6 +135,21 @@ export default function Home() {
   const checkIfDarkColor = (colorHex: string) => {
     const darkColors = ['#0077b6', '#1d3557', '#2b2d42', '#118ab2', '#4ea8de'];
     return darkColors.includes(colorHex);
+  };
+
+  // 헥사 색상 코드를 알파 채널이 조절된 rgba로 변환해주는 헬퍼 (네온 글로우 아우라 구현용)
+  const hexToRgba = (hex: string, alpha: number = 1) => {
+    let cleanHex = hex.replace('#', '');
+    if (cleanHex.length === 3) {
+      cleanHex = cleanHex.split('').map(char => char + char).join('');
+    }
+    if (cleanHex.length !== 6) {
+      return `rgba(99, 102, 241, ${alpha})`; // 기본 네온 블루/인디고 폴백
+    }
+    const r = parseInt(cleanHex.substring(0, 2), 16);
+    const g = parseInt(cleanHex.substring(2, 4), 16);
+    const b = parseInt(cleanHex.substring(4, 6), 16);
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
   };
 
   // 이미 알림이 전송된 일정 ID 캐시 (새로고침 시 중복 방지용 영속화)
@@ -1716,40 +1735,49 @@ ${memo.content}`;
           className="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center px-3"
           style={{
             zIndex: 9999,
-            backgroundColor: 'rgba(15, 23, 42, 0.65)',
-            backdropFilter: 'blur(12px)',
+            backgroundColor: 'rgba(8, 10, 20, 0.75)',
+            backdropFilter: 'blur(16px)',
             transition: 'all 0.3s ease-in-out'
           }}
           onClick={() => setSelectedMemo(null)}
         >
           <div 
-            className="premium-card p-4 w-100 rounded-4 border-0 shadow-lg position-relative scale-in"
+            className="premium-card p-4 w-100 rounded-4 position-relative scale-in"
             style={{
               maxWidth: '650px',
-              backgroundColor: selectedMemo.color || '#fffbeb',
-              color: checkIfDarkColor(selectedMemo.color || '#fffbeb') ? '#ffffff' : '#2b2d42',
-              boxShadow: '0 25px 60px rgba(0, 0, 0, 0.45)',
-              borderTop: `6px solid ${checkIfDarkColor(selectedMemo.color || '#fffbeb') ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.2)'}`,
+              backgroundColor: 'rgba(15, 18, 36, 0.93)',
+              color: '#f1f5f9',
+              border: `1px solid ${hexToRgba(selectedMemo.color || '#6366f1', 0.25)}`,
+              borderTop: `6px solid ${selectedMemo.color || '#6366f1'}`,
+              boxShadow: `0 0 30px ${hexToRgba(selectedMemo.color || '#6366f1', 0.25)}, 0 15px 50px rgba(0, 0, 0, 0.65), inset 0 0 15px ${hexToRgba(selectedMemo.color || '#6366f1', 0.08)}`,
               fontFamily: getSelectedFontCss()
             }}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
-            <div className="d-flex align-items-start justify-content-between mb-3 border-bottom pb-2" style={{ borderColor: 'rgba(0,0,0,0.08)' }}>
+            <div className="d-flex align-items-start justify-content-between mb-3 border-bottom pb-3" style={{ borderColor: hexToRgba(selectedMemo.color || '#6366f1', 0.18) }}>
               <div>
-                <h4 className="fw-bold mb-1 display-font d-flex align-items-center gap-2" style={{ letterSpacing: '-0.3px' }}>
-                  {isMemoPinned(selectedMemo) && <i className="bi bi-pin-angle-fill text-primary" style={{ fontSize: '1.25rem' }}></i>}
+                <h4 className="fw-bold mb-1 display-font d-flex align-items-center gap-2" style={{ letterSpacing: '-0.3px', color: '#ffffff' }}>
+                  {isMemoPinned(selectedMemo) && <i className="bi bi-pin-angle-fill" style={{ color: selectedMemo.color || '#6366f1', fontSize: '1.25rem' }}></i>}
                   {getCleanMemoTitle(selectedMemo.title)}
                 </h4>
-                <div className="d-flex flex-wrap align-items-center gap-2 mt-1" style={{ opacity: 0.8 }}>
-                  <small style={{ fontSize: '0.75rem' }} className="d-flex align-items-center gap-1">
-                                    <i className="bi bi-clock-history"></i>
-                                    {formatDateKST(selectedMemo.createdAt, true)} 작성됨
-                                  </small>
+                <div className="d-flex flex-wrap align-items-center gap-2 mt-1" style={{ opacity: 0.85 }}>
+                  <small style={{ fontSize: '0.75rem', color: '#94a3b8' }} className="d-flex align-items-center gap-1">
+                    <i className="bi bi-clock-history"></i>
+                    {formatDateKST(selectedMemo.createdAt, true)} 작성됨
+                  </small>
                   {(() => {
                     const stats = getMemoStats(selectedMemo.content || '');
                     return (
-                      <span className="badge bg-secondary-subtle text-secondary py-0.5 border" style={{ fontSize: '0.65rem' }}>
+                      <span 
+                        className="badge py-1 px-2 border" 
+                        style={{ 
+                          fontSize: '0.65rem',
+                          backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                          color: '#94a3b8',
+                          borderColor: 'rgba(255, 255, 255, 0.08)'
+                        }}
+                      >
                         공백제외: {stats.charCountWithoutSpace}자 / 예상리딩: {stats.readingTimeMins}분
                       </span>
                     );
@@ -1759,12 +1787,18 @@ ${memo.content}`;
               
               <button 
                 onClick={() => setSelectedMemo(null)}
-                className="btn btn-sm rounded-circle d-flex align-items-center justify-content-center border-0 p-2"
+                onMouseEnter={() => setCloseHovered(true)}
+                onMouseLeave={() => setCloseHovered(false)}
+                className="btn btn-sm rounded-circle d-flex align-items-center justify-content-center"
                 style={{ 
-                  backgroundColor: 'rgba(0,0,0,0.06)',
-                  color: 'inherit',
+                  backgroundColor: closeHovered ? 'rgba(239, 68, 68, 0.2)' : 'rgba(255, 255, 255, 0.06)',
+                  color: closeHovered ? '#f87171' : '#94a3b8',
                   width: '32px',
-                  height: '32px'
+                  height: '32px',
+                  border: `1px solid ${closeHovered ? 'rgba(239, 68, 68, 0.4)' : 'rgba(255, 255, 255, 0.1)'}`,
+                  boxShadow: closeHovered ? '0 0 10px rgba(239, 68, 68, 0.4)' : 'none',
+                  transition: 'all 0.2s ease-in-out',
+                  cursor: 'pointer'
                 }}
                 title="닫기"
               >
@@ -1784,7 +1818,7 @@ ${memo.content}`;
             >
               <MarkdownRenderer 
                 content={selectedMemo.content} 
-                isDarkColor={checkIfDarkColor(selectedMemo.color || '#fffbeb')} 
+                isDarkColor={true} 
                 onTodoToggle={async (lineIndex) => {
                   const lines = (selectedMemo.content || '').split('\n');
                   if (lines[lineIndex] !== undefined) {
@@ -1810,9 +1844,17 @@ ${memo.content}`;
             </div>
 
             {/* Modal Footer Controls */}
-            <div className="d-flex align-items-center justify-content-between border-top pt-3" style={{ borderColor: 'rgba(0,0,0,0.08)' }}>
-              <span className="badge px-3 py-2 rounded-pill fw-semibold" style={{ backgroundColor: 'rgba(0,0,0,0.06)', color: 'inherit', fontSize: '0.75rem' }}>
-                ✏️ Premium Editor Active
+            <div className="d-flex align-items-center justify-content-between border-top pt-3" style={{ borderColor: hexToRgba(selectedMemo.color || '#6366f1', 0.18) }}>
+              <span 
+                className="badge px-3 py-2 rounded-pill fw-semibold" 
+                style={{ 
+                  backgroundColor: 'rgba(255, 255, 255, 0.05)', 
+                  color: '#94a3b8', 
+                  border: '1px solid rgba(255, 255, 255, 0.08)',
+                  fontSize: '0.75rem' 
+                }}
+              >
+                ✏️ Premium View Mode
               </span>
               
               <div className="d-flex gap-2">
@@ -1820,11 +1862,20 @@ ${memo.content}`;
                   onClick={() => {
                     copyMemoMarkdown(selectedMemo);
                   }}
-                  className="btn btn-sm px-3 py-2 rounded-3 fw-bold d-flex align-items-center gap-1 border-0"
+                  onMouseEnter={() => setHoveredAction('copy')}
+                  onMouseLeave={() => setHoveredAction(null)}
+                  className="btn btn-sm px-3 py-2 rounded-3 fw-bold d-flex align-items-center gap-1"
                   style={{
-                    backgroundColor: 'rgba(255,255,255,0.4)',
-                    color: 'inherit',
-                    fontSize: '0.8rem'
+                    background: hoveredAction === 'copy'
+                      ? 'linear-gradient(135deg, #2dd4bf, #0ea5e9)'
+                      : 'linear-gradient(135deg, rgba(45, 212, 191, 0.08), rgba(14, 165, 233, 0.08))',
+                    color: hoveredAction === 'copy' ? '#ffffff' : '#2dd4bf',
+                    border: '1px solid rgba(45, 212, 191, 0.4)',
+                    boxShadow: hoveredAction === 'copy' ? '0 0 15px rgba(45, 212, 191, 0.5)' : 'none',
+                    fontSize: '0.8rem',
+                    transform: hoveredAction === 'copy' ? 'translateY(-1px)' : 'none',
+                    transition: 'all 0.2s ease-in-out',
+                    cursor: 'pointer'
                   }}
                   title="마크다운 복사"
                 >
@@ -1835,11 +1886,20 @@ ${memo.content}`;
                     handleStartMemoEdit(selectedMemo);
                     setSelectedMemo(null);
                   }}
-                  className="btn btn-sm px-3 py-2 rounded-3 fw-bold d-flex align-items-center gap-1 border-0"
+                  onMouseEnter={() => setHoveredAction('edit')}
+                  onMouseLeave={() => setHoveredAction(null)}
+                  className="btn btn-sm px-3 py-2 rounded-3 fw-bold d-flex align-items-center gap-1"
                   style={{
-                    backgroundColor: 'rgba(255,255,255,0.4)',
-                    color: 'inherit',
-                    fontSize: '0.8rem'
+                    background: hoveredAction === 'edit'
+                      ? 'linear-gradient(135deg, #6366f1, #a855f7)'
+                      : 'linear-gradient(135deg, rgba(99, 102, 241, 0.08), rgba(168, 85, 247, 0.08))',
+                    color: hoveredAction === 'edit' ? '#ffffff' : '#818cf8',
+                    border: '1px solid rgba(99, 102, 241, 0.4)',
+                    boxShadow: hoveredAction === 'edit' ? '0 0 15px rgba(99, 102, 241, 0.5)' : 'none',
+                    fontSize: '0.8rem',
+                    transform: hoveredAction === 'edit' ? 'translateY(-1px)' : 'none',
+                    transition: 'all 0.2s ease-in-out',
+                    cursor: 'pointer'
                   }}
                 >
                   <i className="bi bi-pencil-fill"></i> 수정하기
@@ -1849,10 +1909,20 @@ ${memo.content}`;
                     setDeleteConfirmTarget({ type: 'memo', id: selectedMemo.id });
                     setSelectedMemo(null);
                   }}
-                  className="btn btn-sm px-3 py-2 rounded-3 fw-bold text-white d-flex align-items-center gap-1 border-0"
+                  onMouseEnter={() => setHoveredAction('delete')}
+                  onMouseLeave={() => setHoveredAction(null)}
+                  className="btn btn-sm px-3 py-2 rounded-3 fw-bold text-white d-flex align-items-center gap-1"
                   style={{
-                    backgroundColor: '#dc3545',
-                    fontSize: '0.8rem'
+                    background: hoveredAction === 'delete'
+                      ? 'linear-gradient(135deg, #f43f5e, #e11d48)'
+                      : 'linear-gradient(135deg, rgba(244, 63, 94, 0.08), rgba(225, 29, 72, 0.08))',
+                    color: hoveredAction === 'delete' ? '#ffffff' : '#f43f5e',
+                    border: '1px solid rgba(244, 63, 94, 0.4)',
+                    boxShadow: hoveredAction === 'delete' ? '0 0 15px rgba(244, 63, 94, 0.5)' : 'none',
+                    fontSize: '0.8rem',
+                    transform: hoveredAction === 'delete' ? 'translateY(-1px)' : 'none',
+                    transition: 'all 0.2s ease-in-out',
+                    cursor: 'pointer'
                   }}
                 >
                   <i className="bi bi-trash-fill"></i> 삭제하기
@@ -2243,22 +2313,101 @@ ${memo.content}`;
                 </select>
               </div>
 
-              <div className="d-flex gap-2">
+              <div className="d-flex gap-3 align-items-center w-100" style={{ maxWidth: '500px', margin: '0 auto' }}>
+                <button 
+                  type="button" 
+                  onClick={handleCancelEdit} 
+                  className="btn d-flex align-items-center justify-content-center gap-2 px-4 py-3 fw-bold transition-all" 
+                  style={{ 
+                    borderRadius: '14px',
+                    flex: '1',
+                    background: 'rgba(241, 245, 249, 0.9)',
+                    border: '1px solid rgba(226, 232, 240, 0.8)',
+                    color: '#475569',
+                    fontSize: '0.95rem',
+                    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.02)',
+                    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
+                  }}
+                  onMouseOver={(e) => {
+                    e.currentTarget.style.background = '#e2e8f0';
+                    e.currentTarget.style.transform = 'translateY(-2px)';
+                    e.currentTarget.style.boxShadow = '0 6px 12px rgba(0, 0, 0, 0.05)';
+                  }}
+                  onMouseOut={(e) => {
+                    e.currentTarget.style.background = 'rgba(241, 245, 249, 0.9)';
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.02)';
+                  }}
+                  onMouseDown={(e) => {
+                    e.currentTarget.style.transform = 'translateY(0) scale(0.97)';
+                  }}
+                >
+                  <i className="bi bi-arrow-left-circle-fill fs-5"></i>
+                  <span>취소</span>
+                </button>
+
                 {editingScheduleId && (
                   <button 
                     type="button" 
                     onClick={handleSaveScheduleOnly} 
-                    className="btn btn-success text-white px-3 fw-bold animate-fade-in" 
-                    style={{ borderRadius: '10px' }}
+                    className="btn d-flex align-items-center justify-content-center gap-2 px-4 py-3 fw-bold text-white transition-all animate-fade-in" 
+                    style={{ 
+                      borderRadius: '14px',
+                      flex: '1',
+                      background: 'linear-gradient(135deg, #34d399, #10b981)',
+                      border: 'none',
+                      fontSize: '0.95rem',
+                      boxShadow: '0 8px 20px rgba(16, 185, 129, 0.2)',
+                      transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
+                    }}
+                    onMouseOver={(e) => {
+                      e.currentTarget.style.background = 'linear-gradient(135deg, #10b981, #059669)';
+                      e.currentTarget.style.transform = 'translateY(-2px)';
+                      e.currentTarget.style.boxShadow = '0 10px 24px rgba(16, 185, 129, 0.35)';
+                    }}
+                    onMouseOut={(e) => {
+                      e.currentTarget.style.background = 'linear-gradient(135deg, #34d399, #10b981)';
+                      e.currentTarget.style.transform = 'translateY(0)';
+                      e.currentTarget.style.boxShadow = '0 8px 20px rgba(16, 185, 129, 0.2)';
+                    }}
+                    onMouseDown={(e) => {
+                      e.currentTarget.style.transform = 'translateY(0) scale(0.97)';
+                    }}
                   >
-                    저장
+                    <i className="bi bi-save-fill fs-5"></i>
+                    <span>임시 저장</span>
                   </button>
                 )}
-                <button type="submit" className={`btn w-100 ${editingScheduleId ? 'btn-warning text-dark fw-bold' : 'btn-premium-primary'}`} style={{ borderRadius: '10px' }}>
-                  {editingScheduleId ? '수정 완료' : '일정 등록'}
-                </button>
-                <button type="button" onClick={handleCancelEdit} className="btn btn-outline-secondary px-3" style={{ borderRadius: '10px' }}>
-                  취소
+
+                <button 
+                  type="submit" 
+                  className="btn d-flex align-items-center justify-content-center gap-2 py-3 fw-bold text-white transition-all" 
+                  style={{ 
+                    borderRadius: '14px',
+                    flex: '2',
+                    background: editingScheduleId ? 'linear-gradient(135deg, #fbbf24, #f59e0b)' : 'linear-gradient(135deg, #6366f1, #3b82f6)',
+                    color: editingScheduleId ? '#1e293b' : '#ffffff',
+                    border: 'none',
+                    fontSize: '0.95rem',
+                    boxShadow: editingScheduleId ? '0 8px 20px rgba(245, 158, 11, 0.2)' : '0 8px 20px rgba(59, 130, 246, 0.25)',
+                    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
+                  }}
+                  onMouseOver={(e) => {
+                    e.currentTarget.style.background = editingScheduleId ? 'linear-gradient(135deg, #f59e0b, #d97706)' : 'linear-gradient(135deg, #4f46e5, #2563eb)';
+                    e.currentTarget.style.transform = 'translateY(-2px)';
+                    e.currentTarget.style.boxShadow = editingScheduleId ? '0 10px 24px rgba(245, 158, 11, 0.35)' : '0 10px 24px rgba(59, 130, 246, 0.4)';
+                  }}
+                  onMouseOut={(e) => {
+                    e.currentTarget.style.background = editingScheduleId ? 'linear-gradient(135deg, #fbbf24, #f59e0b)' : 'linear-gradient(135deg, #6366f1, #3b82f6)';
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.boxShadow = editingScheduleId ? '0 8px 20px rgba(245, 158, 11, 0.2)' : '0 8px 20px rgba(59, 130, 246, 0.25)';
+                  }}
+                  onMouseDown={(e) => {
+                    e.currentTarget.style.transform = 'translateY(0) scale(0.97)';
+                  }}
+                >
+                  <i className="bi bi-check-circle-fill fs-5"></i>
+                  <span>{editingScheduleId ? '수정 완료' : '일정 등록'}</span>
                 </button>
               </div>
             </form>
