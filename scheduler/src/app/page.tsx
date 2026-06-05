@@ -61,6 +61,8 @@ export default function Home() {
   const [authPassword, setAuthPassword] = useState('');
   const [authDisplayName, setAuthDisplayName] = useState('');
   const [rememberMe, setRememberMe] = useState(true);
+  const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
+  const [isMemoModalOpen, setIsMemoModalOpen] = useState(false);
 
   // 일정 입력 폼 상태
   const [title, setTitle] = useState('');
@@ -653,8 +655,26 @@ ${memo.content}`;
       setStartTime(formatDateTime(start));
       setEndTime(formatDateTime(end));
       setCategory('Work');
+      setIsScheduleModalOpen(false);
     } catch (err) {
       // 에러 자동 처리
+    }
+  };
+
+  // 일정 수정 시 창 닫지 않고 바로 저장하는 핸들러
+  const handleSaveScheduleOnly = async () => {
+    if (!editingScheduleId || !title.trim() || !startTime || !endTime) return;
+    try {
+      await updateScheduleDetails(editingScheduleId, {
+        title,
+        description,
+        startTime: new Date(startTime).toISOString(),
+        endTime: new Date(endTime).toISOString(),
+        category
+      });
+      showToast('💾 일정 변경 사항이 저장되었습니다.');
+    } catch (err) {
+      showToast('❌ 일정 저장 중 오류가 발생했습니다.');
     }
   };
 
@@ -673,7 +693,7 @@ ${memo.content}`;
     setStartTime(formatDateTime(schedule.startTime));
     setEndTime(formatDateTime(schedule.endTime));
     setCategory(schedule.category);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setIsScheduleModalOpen(true);
   };
 
   // 일정 수정 모드 취소
@@ -692,6 +712,7 @@ ${memo.content}`;
     setStartTime(formatDateTime(start));
     setEndTime(formatDateTime(end));
     setCategory('Work');
+    setIsScheduleModalOpen(false);
   };
 
   // 메모 제출 핸들러
@@ -719,8 +740,24 @@ ${memo.content}`;
       setMemoTitle('');
       setMemoContent('');
       setMemoColor('#fffbeb');
+      setIsMemoModalOpen(false);
     } catch (err) {
       // 에러 자동 처리
+    }
+  };
+
+  // 메모 수정 시 창 닫지 않고 바로 저장하는 핸들러
+  const handleSaveMemoOnly = async () => {
+    if (!editingMemoId || !memoTitle.trim()) return;
+    try {
+      await editMemo(editingMemoId, {
+        title: memoTitle,
+        content: memoContent,
+        color: memoColor
+      });
+      showToast('💾 메모 변경 사항이 저장되었습니다.');
+    } catch (err) {
+      showToast('❌ 메모 저장 중 오류가 발생했습니다.');
     }
   };
 
@@ -730,7 +767,7 @@ ${memo.content}`;
     setMemoTitle(memo.title);
     setMemoContent(memo.content || '');
     setMemoColor(memo.color || '#fffbeb');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setIsMemoModalOpen(true);
   };
 
   // 메모 수정 모드 취소
@@ -739,6 +776,7 @@ ${memo.content}`;
     setMemoTitle('');
     setMemoContent('');
     setMemoColor('#fffbeb');
+    setIsMemoModalOpen(false);
   };
 
   // 메모 에디터 내 슬래시 커맨드 (/checkbox) 감지 및 자동 치환
@@ -1128,97 +1166,25 @@ ${memo.content}`;
                 </div>
 
                 <div className="row g-4">
-                  {/* Left Column - Input Form */}
-                  <div className="col-lg-4">
-                    <div className="premium-card p-4 sticky-lg-top" style={{ top: '96px', zIndex: 10 }}>
-                      <h5 className="fw-bold mb-3 d-flex align-items-center gap-2">
-                        <i className={`bi ${editingScheduleId ? 'bi-pencil-square text-warning' : 'bi-plus-circle-fill text-primary'}`}></i>
-                        {editingScheduleId ? '일정 수정하기' : '새로운 일정 등록'}
-                      </h5>
-                      
-                      <form onSubmit={handleSubmit}>
-                        <div className="mb-3">
-                          <label htmlFor="title" className="form-label small fw-semibold text-muted">일정 제목 *</label>
-                          <input
-                            type="text"
-                            id="title"
-                            className="form-control form-premium-control"
-                            placeholder="예: Supabase 연동 개발 회의"
-                            value={title}
-                            onChange={(e) => setTitle(e.target.value)}
-                            required
-                          />
-                        </div>
-
-                        <div className="mb-3">
-                          <label htmlFor="description" className="form-label small fw-semibold text-muted">상세 설명</label>
-                          <textarea
-                            id="description"
-                            className="form-control form-premium-control"
-                            rows={3}
-                            placeholder="구체적인 업무 내용 및 메모..."
-                            value={description}
-                            onChange={(e) => setDescription(e.target.value)}
-                          />
-                        </div>
-
-                        <div className="row g-2 mb-3">
-                          <div className="col-6">
-                            <label htmlFor="startTime" className="form-label small fw-semibold text-muted">시작 시간 *</label>
-                            <input
-                              type="datetime-local"
-                              id="startTime"
-                              className="form-control form-premium-control"
-                              value={startTime}
-                              onChange={(e) => setStartTime(e.target.value)}
-                              required
-                            />
-                          </div>
-                          <div className="col-6">
-                            <label htmlFor="endTime" className="form-label small fw-semibold text-muted">종료 시간 *</label>
-                            <input
-                              type="datetime-local"
-                              id="endTime"
-                              className="form-control form-premium-control"
-                              value={endTime}
-                              onChange={(e) => setEndTime(e.target.value)}
-                              required
-                            />
-                          </div>
-                        </div>
-
-                        <div className="mb-4">
-                          <label htmlFor="category" className="form-label small fw-semibold text-muted">카테고리</label>
-                          <select
-                            id="category"
-                            className="form-select form-premium-control"
-                            value={category}
-                            onChange={(e) => setCategory(e.target.value as ScheduleCategory)}
-                          >
-                            <option value="Work">🏢 업무 (Work)</option>
-                            <option value="Personal">🏡 개인 (Personal)</option>
-                            <option value="Important">⭐ 중요 (Important)</option>
-                            <option value="Meeting">👥 회의 (Meeting)</option>
-                            <option value="Etc">🏷️ 기타 (Etc)</option>
-                          </select>
-                        </div>
-
-                        <div className="d-flex gap-2">
-                          <button type="submit" className={`btn w-100 ${editingScheduleId ? 'btn-warning text-dark fw-bold' : 'btn-premium-primary'}`} style={{ borderRadius: '10px' }}>
-                            {editingScheduleId ? '수정 완료' : '일정 등록'}
-                          </button>
-                          {editingScheduleId && (
-                            <button type="button" onClick={handleCancelEdit} className="btn btn-outline-secondary px-3" style={{ borderRadius: '10px' }}>
-                              취소
-                            </button>
-                          )}
-                        </div>
-                      </form>
+                  {/* Left Column - Actions Control */}
+                  <div className="col-lg-3">
+                    <div className="sticky-lg-top" style={{ top: '96px', zIndex: 10 }}>
+                      <button
+                        onClick={() => {
+                          handleCancelEdit();
+                          setIsScheduleModalOpen(true);
+                        }}
+                        className="btn btn-premium-primary w-100 py-3 rounded-4 fw-bold shadow-sm d-flex align-items-center justify-content-center gap-2 transition-all"
+                        style={{ fontSize: '1rem' }}
+                      >
+                        <i className="bi bi-calendar-plus-fill fs-5"></i>
+                        <span>새 일정 계획하기</span>
+                      </button>
                     </div>
                   </div>
 
                   {/* Right Column - Schedule Board & Lists */}
-                  <div className="col-lg-8">
+                  <div className="col-lg-9">
                     <div className="premium-card p-4">
                       {/* Filters Header Bar */}
                       {/* 9. 카테고리별 컬러 칩 및 원클릭 퀵 필터 */}
@@ -1469,88 +1435,25 @@ ${memo.content}`;
             {/* 2. 메모패드 (Memo Tab) */}
             {activeTab === 'memo' && (
               <div className="row g-4">
-                {/* Left Column - Memo Input Form */}
-                <div className="col-lg-4">
-                  <div className="premium-card p-4 sticky-lg-top" style={{ top: '96px', zIndex: 10 }}>
-                    <h5 className="fw-bold mb-3 d-flex align-items-center gap-2">
-                      <i className={`bi ${editingMemoId ? 'bi-sticky text-warning' : 'bi-sticky-fill text-primary'}`}></i>
-                      {editingMemoId ? '메모 수정하기' : '새로운 메모 등록'}
-                    </h5>
-
-                    <form onSubmit={handleMemoSubmit}>
-                      <div className="mb-3">
-                        <label htmlFor="memoTitle" className="form-label small fw-semibold text-muted">메모 제목 *</label>
-                        <input
-                          type="text"
-                          id="memoTitle"
-                          className="form-control form-premium-control"
-                          placeholder="예: 아이디어 영감 기록"
-                          value={memoTitle}
-                          onChange={(e) => setMemoTitle(e.target.value)}
-                          required
-                          style={{ fontFamily: getSelectedFontCss() }}
-                        />
-                      </div>
-
-                      <div className="mb-3">
-                        <label htmlFor="memoContent" className="form-label small fw-semibold text-muted">메모 내용 *</label>
-                        <textarea
-                          id="memoContent"
-                          className="form-control form-premium-control"
-                          rows={5}
-                          placeholder="자유롭게 생각을 기록해 보세요... (/checkbox 입력 시 체크박스로 자동 변환)"
-                          value={memoContent}
-                          onChange={(e) => setMemoContent(e.target.value)}
-                          onKeyDown={handleMemoContentKeyDown}
-                          required
-                          style={{ fontFamily: getSelectedFontCss() }}
-                        />
-                      </div>
-
-                      <div className="mb-4">
-                        <label className="form-label small fw-semibold text-muted d-block">메모 카드 테마 색상</label>
-                        <div className="d-flex flex-wrap gap-2 mt-1">
-                          {pastelColors.map((color) => (
-                            <button
-                              key={color.hex}
-                              type="button"
-                              onClick={() => setMemoColor(color.hex)}
-                              className="rounded-circle border-0 transition-all d-flex align-items-center justify-content-center shadow-sm"
-                              style={{
-                                width: '32px',
-                                height: '32px',
-                                backgroundColor: color.hex,
-                                transform: memoColor === color.hex ? 'scale(1.2)' : 'scale(1)',
-                                border: memoColor === color.hex ? '2px solid #000' : 'none',
-                                boxShadow: memoColor === color.hex ? '0 0 8px rgba(0,0,0,0.3)' : 'none',
-                                transition: 'all 0.15s ease'
-                              }}
-                              title={color.name}
-                            >
-                              {memoColor === color.hex && (
-                                <i className={`bi bi-check-lg ${checkIfDarkColor(color.hex) ? 'text-white' : 'text-dark'}`} style={{ fontSize: '0.8rem' }}></i>
-                              )}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-
-                      <div className="d-flex gap-2">
-                        <button type="submit" className={`btn w-100 ${editingMemoId ? 'btn-warning text-dark fw-bold' : 'btn-premium-primary'}`} style={{ borderRadius: '10px' }}>
-                          {editingMemoId ? '수정 완료' : '메모 등록'}
-                        </button>
-                        {editingMemoId && (
-                          <button type="button" onClick={handleCancelMemoEdit} className="btn btn-outline-secondary px-3" style={{ borderRadius: '10px' }}>
-                            취소
-                          </button>
-                        )}
-                      </div>
-                    </form>
+                  {/* Left Column - Actions Control */}
+                  <div className="col-lg-3">
+                    <div className="sticky-lg-top" style={{ top: '96px', zIndex: 10 }}>
+                      <button
+                        onClick={() => {
+                          handleCancelMemoEdit();
+                          setIsMemoModalOpen(true);
+                        }}
+                        className="btn btn-premium-primary w-100 py-3 rounded-4 fw-bold shadow-sm d-flex align-items-center justify-content-center gap-2 transition-all"
+                        style={{ fontSize: '1rem' }}
+                      >
+                        <i className="bi bi-sticky-fill fs-5"></i>
+                        <span>새 메모 작성하기</span>
+                      </button>
+                    </div>
                   </div>
-                </div>
 
-                {/* Right Column - Pinterest Style Memo board */}
-                <div className="col-lg-8">
+                  {/* Right Column - Pinterest Style Memo board */}
+                  <div className="col-lg-9">
                   <div className="premium-card p-4">
                     {/* Search and Color Filters Bar */}
                     <div className="row g-3 align-items-center mb-4">
@@ -1686,26 +1589,7 @@ ${memo.content}`;
                                     </div>
                                   </div>
  
-                                  {/* Line-Clamp 기반 마크다운 요약 뷰포트 장착 */}
-                                  <div 
-                                    className="flex-grow-1 mb-3 text-start" 
-                                    style={{ 
-                                      lineHeight: '1.5',
-                                      opacity: 0.9,
-                                      display: '-webkit-box',
-                                      WebkitLineClamp: 3,
-                                      WebkitBoxOrient: 'vertical',
-                                      overflow: 'hidden',
-                                      textOverflow: 'ellipsis',
-                                      fontFamily: getSelectedFontCss()
-                                    }}
-                                  >
-                                    <MarkdownRenderer content={memo.content} isDarkColor={isDarkColor} isSummary={true} />
-                                  </div>
-
-                                  <div className="mb-2 text-end" style={{ opacity: 0.6, fontSize: '0.7rem', fontWeight: 600 }}>
-                                    <i className="bi bi-plus-circle me-1"></i>클릭하여 전체 내용 보기
-                                  </div>
+                                  {/* Line-Clamp 요약은 제목 중심 UI 규칙에 따라 생략 */}
  
                                   <div 
                                     className="d-flex align-items-center justify-content-between border-top pt-2 mt-auto"
@@ -2071,6 +1955,249 @@ ${memo.content}`;
                 삭제
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* 팝업 모달로 동작하는 일정 등록/수정 창 */}
+      {isScheduleModalOpen && (
+        <div 
+          className="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center px-3"
+          style={{
+            zIndex: 10000,
+            backgroundColor: 'rgba(15, 23, 42, 0.65)',
+            backdropFilter: 'blur(12px)',
+            transition: 'all 0.3s ease-in-out'
+          }}
+          onClick={handleCancelEdit}
+        >
+          <div 
+            className="premium-card p-4 w-100 rounded-4 border-0 shadow-lg position-relative scale-in bg-white"
+            style={{
+              maxWidth: '500px',
+              color: '#2b2d42',
+              boxShadow: '0 25px 60px rgba(0, 0, 0, 0.3)',
+              borderTop: `6px solid ${editingScheduleId ? '#ffbd2e' : '#0d6efd'}`
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="d-flex align-items-center justify-content-between mb-4 border-bottom pb-2" style={{ borderColor: 'rgba(0,0,0,0.08)' }}>
+              <h5 className="fw-bold mb-0 d-flex align-items-center gap-2" style={{ color: 'inherit' }}>
+                <i className={`bi ${editingScheduleId ? 'bi-pencil-square text-warning' : 'bi-plus-circle-fill text-primary'}`}></i>
+                {editingScheduleId ? '일정 수정하기' : '새로운 일정 등록'}
+              </h5>
+              <button 
+                onClick={handleCancelEdit}
+                className="btn btn-sm rounded-circle d-flex align-items-center justify-content-center border-0 p-2"
+                style={{ backgroundColor: 'rgba(0,0,0,0.06)', width: '32px', height: '32px', color: 'inherit' }}
+              >
+                <i className="bi bi-x-lg"></i>
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmit}>
+              <div className="mb-3 text-start">
+                <label htmlFor="title" className="form-label small fw-semibold text-muted">일정 제목 *</label>
+                <input
+                  type="text"
+                  id="title"
+                  className="form-control form-premium-control"
+                  placeholder="예: Supabase 연동 개발 회의"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  required
+                />
+              </div>
+
+              <div className="mb-3 text-start">
+                <label htmlFor="description" className="form-label small fw-semibold text-muted">상세 설명</label>
+                <textarea
+                  id="description"
+                  className="form-control form-premium-control"
+                  rows={3}
+                  placeholder="구체적인 업무 내용 및 메모..."
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                />
+              </div>
+
+              <div className="row g-2 mb-3 text-start">
+                <div className="col-6">
+                  <label htmlFor="startTime" className="form-label small fw-semibold text-muted">시작 시간 *</label>
+                  <input
+                    type="datetime-local"
+                    id="startTime"
+                    className="form-control form-premium-control"
+                    value={startTime}
+                    onChange={(e) => setStartTime(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="col-6">
+                  <label htmlFor="endTime" className="form-label small fw-semibold text-muted">종료 시간 *</label>
+                  <input
+                    type="datetime-local"
+                    id="endTime"
+                    className="form-control form-premium-control"
+                    value={endTime}
+                    onChange={(e) => setEndTime(e.target.value)}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="mb-4 text-start">
+                <label htmlFor="category" className="form-label small fw-semibold text-muted">카테고리</label>
+                <select
+                  id="category"
+                  className="form-select form-premium-control"
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value as ScheduleCategory)}
+                >
+                  <option value="Work">🏢 업무 (Work)</option>
+                  <option value="Personal">🏡 개인 (Personal)</option>
+                  <option value="Important">⭐ 중요 (Important)</option>
+                  <option value="Meeting">👥 회의 (Meeting)</option>
+                  <option value="Etc">🏷️ 기타 (Etc)</option>
+                </select>
+              </div>
+
+              <div className="d-flex gap-2">
+                {editingScheduleId && (
+                  <button 
+                    type="button" 
+                    onClick={handleSaveScheduleOnly} 
+                    className="btn btn-success text-white px-3 fw-bold animate-fade-in" 
+                    style={{ borderRadius: '10px' }}
+                  >
+                    저장
+                  </button>
+                )}
+                <button type="submit" className={`btn w-100 ${editingScheduleId ? 'btn-warning text-dark fw-bold' : 'btn-premium-primary'}`} style={{ borderRadius: '10px' }}>
+                  {editingScheduleId ? '수정 완료' : '일정 등록'}
+                </button>
+                <button type="button" onClick={handleCancelEdit} className="btn btn-outline-secondary px-3" style={{ borderRadius: '10px' }}>
+                  취소
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* 팝업 모달로 동작하는 메모 등록/수정 창 */}
+      {isMemoModalOpen && (
+        <div 
+          className="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center px-3"
+          style={{
+            zIndex: 10000,
+            backgroundColor: 'rgba(15, 23, 42, 0.65)',
+            backdropFilter: 'blur(12px)',
+            transition: 'all 0.3s ease-in-out'
+          }}
+          onClick={handleCancelMemoEdit}
+        >
+          <div 
+            className="premium-card p-4 w-100 rounded-4 border-0 shadow-lg position-relative scale-in bg-white"
+            style={{
+              maxWidth: '550px',
+              color: '#2b2d42',
+              boxShadow: '0 25px 60px rgba(0, 0, 0, 0.3)',
+              borderTop: `6px solid ${editingMemoId ? '#ffbd2e' : '#0d6efd'}`
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="d-flex align-items-center justify-content-between mb-4 border-bottom pb-2" style={{ borderColor: 'rgba(0,0,0,0.08)' }}>
+              <h5 className="fw-bold mb-0 d-flex align-items-center gap-2" style={{ color: 'inherit' }}>
+                <i className={`bi ${editingMemoId ? 'bi-sticky text-warning' : 'bi-sticky-fill text-primary'}`}></i>
+                {editingMemoId ? '메모 수정하기' : '새로운 메모 등록'}
+              </h5>
+              <button 
+                onClick={handleCancelMemoEdit}
+                className="btn btn-sm rounded-circle d-flex align-items-center justify-content-center border-0 p-2"
+                style={{ backgroundColor: 'rgba(0,0,0,0.06)', width: '32px', height: '32px', color: 'inherit' }}
+              >
+                <i className="bi bi-x-lg"></i>
+              </button>
+            </div>
+
+            <form onSubmit={handleMemoSubmit}>
+              <div className="mb-3 text-start">
+                <label htmlFor="memoTitle" className="form-label small fw-semibold text-muted">메모 제목 *</label>
+                <input
+                  type="text"
+                  id="memoTitle"
+                  className="form-control form-premium-control"
+                  placeholder="예: 아이디어 영감 기록"
+                  value={memoTitle}
+                  onChange={(e) => setMemoTitle(e.target.value)}
+                  required
+                  style={{ fontFamily: getSelectedFontCss() }}
+                />
+              </div>
+
+              <div className="mb-3 text-start">
+                <label htmlFor="memoContent" className="form-label small fw-semibold text-muted">메모 내용 *</label>
+                <textarea
+                  id="memoContent"
+                  className="form-control form-premium-control"
+                  rows={5}
+                  placeholder="자유롭게 생각을 기록해 보세요... (/checkbox 입력 시 체크박스로 자동 변환)"
+                  value={memoContent}
+                  onChange={(e) => setMemoContent(e.target.value)}
+                  onKeyDown={handleMemoContentKeyDown}
+                  required
+                  style={{ fontFamily: getSelectedFontCss() }}
+                />
+              </div>
+
+              <div className="mb-4 text-start">
+                <label className="form-label small fw-semibold text-muted d-block">메모 카드 테마 색상</label>
+                <div className="d-flex flex-wrap gap-2 mt-1">
+                  {pastelColors.map((color) => (
+                    <button
+                      key={color.hex}
+                      type="button"
+                      onClick={() => setMemoColor(color.hex)}
+                      className="rounded-circle border-0 transition-all d-flex align-items-center justify-content-center shadow-sm"
+                      style={{
+                        width: '32px',
+                        height: '32px',
+                        backgroundColor: color.hex,
+                        transform: memoColor === color.hex ? 'scale(1.2)' : 'scale(1)',
+                        border: memoColor === color.hex ? '2px solid #000' : 'none',
+                        boxShadow: memoColor === color.hex ? '0 0 8px rgba(0,0,0,0.3)' : 'none',
+                        transition: 'all 0.15s ease'
+                      }}
+                      title={color.name}
+                    >
+                      {memoColor === color.hex && (
+                        <i className={`bi bi-check-lg ${checkIfDarkColor(color.hex) ? 'text-white' : 'text-dark'}`} style={{ fontSize: '0.8rem' }}></i>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="d-flex gap-2">
+                {editingMemoId && (
+                  <button 
+                    type="button" 
+                    onClick={handleSaveMemoOnly} 
+                    className="btn btn-success text-white px-3 fw-bold animate-fade-in" 
+                    style={{ borderRadius: '10px' }}
+                  >
+                    저장
+                  </button>
+                )}
+                <button type="submit" className={`btn w-100 ${editingMemoId ? 'btn-warning text-dark fw-bold' : 'btn-premium-primary'}`} style={{ borderRadius: '10px' }}>
+                  {editingMemoId ? '수정 완료' : '메모 등록'}
+                </button>
+                <button type="button" onClick={handleCancelMemoEdit} className="btn btn-outline-secondary px-3" style={{ borderRadius: '10px' }}>
+                  취소
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
