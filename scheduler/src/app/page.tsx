@@ -118,17 +118,17 @@ export default function Home() {
   // Supabase 가이드 배너 토글
   const [showGuide, setShowGuide] = useState(false);
 
-  // 프리미엄 파스텔 & 세련된 오션 마린 테마 색상 정의 (하늘, 푸른, 바다색 계열 대폭 강화)
+  // 사이버펑크 일렉트릭 네온 컬러 팔레트 정의
   const pastelColors = [
-    { name: '💛 밀크바닐라', hex: '#fffbeb' },    // 감성 코지 옐로우 (라이트)
-    { name: '🩵 스카이블루', hex: '#e0f2fe' },    // 화사한 아침 하늘색 (라이트)
-    { name: '💙 소다레인', hex: '#bde0fe' },      // 청량한 청하늘색 (라이트)
-    { name: '💚 산호바다', hex: '#ccfbf1' },      // 세련되고 맑은 민트 바다색 (라이트)
-    { name: '🌊 소프트오션', hex: '#bae6fd' },    // 화사하고 은은한 파스텔 오션블루 (라이트)
-    { name: '💎 소다시안', hex: '#e0f7fa' },      // 맑고 청명한 시안 파스텔 바다색 (라이트)
-    { name: '💠 소프트마린', hex: '#dbeafe' },    // 세련되고 아늑한 파스텔 로열블루 (라이트)
-    { name: '💜 연라벤더', hex: '#e8e8ff' },      // 은은한 안개 보라색 (라이트)
-    { name: '🩷 체리블러썸', hex: '#ffe5ec' }     // 부드러운 벚꽃 핑크색 (라이트)
+    { name: '💖 네온핑크', hex: '#ff007f' },
+    { name: '💎 네온시안', hex: '#00f0ff' },
+    { name: '💚 네온그린', hex: '#39ff14' },
+    { name: '⚡ 네온옐로우', hex: '#ffff00' },
+    { name: '🔮 네온퍼플', hex: '#bd00ff' },
+    { name: '🔥 네온오렌지', hex: '#ff5e00' },
+    { name: '💙 네온블루', hex: '#004cff' },
+    { name: '💀 메카닉그레이', hex: '#475569' },
+    { name: '🤍 고스트화이트', hex: '#f8fafc' }
   ];
 
   // 어두운 색상 판별 헬퍼 함수 (기존 구형 진한 색상 메모에 대한 하위 호환성 전용)
@@ -972,12 +972,12 @@ ${memo.content}`;
       <nav className="navbar navbar-expand-lg glass-nav py-3 sticky-top">
         <div className="container">
           <div className="d-flex align-items-center">
-            <div className="bg-primary text-white rounded-3 p-2 me-3 d-flex align-items-center justify-content-center shadow-sm" style={{ width: '40px', height: '40px' }}>
+            <div className="text-white rounded-3 p-2 me-3 d-flex align-items-center justify-content-center" style={{ width: '40px', height: '40px', background: 'var(--primary-gradient)', boxShadow: '0 0 12px var(--neon-pink)' }}>
               <i className="bi bi-journal-check fs-4"></i>
             </div>
             <div>
-              <span className="navbar-brand mb-0 h4 fw-bold text-primary display-font">Antigravity Note</span>
-              <small className="d-block text-muted" style={{ fontSize: '0.7rem', marginTop: '-4px' }}>Planner & Memory Pad</small>
+              <span className="navbar-brand mb-0 h4 fw-bold display-font neon-text-pink" style={{ letterSpacing: '0.5px' }}>Antigravity Note</span>
+              <small className="d-block text-secondary" style={{ fontSize: '0.7rem', marginTop: '-4px', opacity: 0.8, letterSpacing: '0.5px' }}>TECHNICAL PORTAL</small>
             </div>
           </div>
 
@@ -1274,46 +1274,46 @@ ${memo.content}`;
                 {/* Overview Stats Row */}
                 <div className="row g-3 mb-4">
                   <div className="col-6 col-md-3">
-                    <div className="premium-card p-3 d-flex align-items-center justify-content-between h-100">
+                    <div className="premium-card p-3 d-flex align-items-center justify-content-between h-100" style={{ border: '1px solid rgba(0, 240, 255, 0.25)', boxShadow: '0 0 10px rgba(0, 240, 255, 0.05)' }}>
                       <div>
-                        <span className="text-muted small d-block mb-1 fw-medium">전체 일정</span>
-                        <span className="h3 mb-0 fw-bold">{totalCount}</span>
+                        <span className="text-secondary small d-block mb-1 fw-medium">전체 일정</span>
+                        <span className="h3 mb-0 fw-bold" style={{ color: '#ffffff' }}>{totalCount}</span>
                       </div>
-                      <div className="bg-primary-subtle text-primary rounded-3 p-3">
-                        <i className="bi bi-calendar3 fs-4"></i>
+                      <div className="rounded-3 p-3 d-flex align-items-center justify-content-center" style={{ width: '46px', height: '46px', backgroundColor: 'rgba(0, 240, 255, 0.12)', color: 'var(--neon-cyan)', border: '1px solid rgba(0, 240, 255, 0.3)', boxShadow: '0 0 8px rgba(0, 240, 255, 0.3)' }}>
+                        <i className="bi bi-calendar3 fs-5"></i>
                       </div>
                     </div>
                   </div>
                   <div className="col-6 col-md-3">
-                    <div className="premium-card p-3 d-flex align-items-center justify-content-between h-100">
+                    <div className="premium-card p-3 d-flex align-items-center justify-content-between h-100" style={{ border: '1px solid rgba(57, 255, 20, 0.25)', boxShadow: '0 0 10px rgba(57, 255, 20, 0.05)' }}>
                       <div>
-                        <span className="text-muted small d-block mb-1 fw-medium">완료됨</span>
-                        <span className="h3 mb-0 fw-bold text-success">{completedCount}</span>
+                        <span className="text-secondary small d-block mb-1 fw-medium">완료됨</span>
+                        <span className="h3 mb-0 fw-bold" style={{ color: 'var(--neon-green)', textShadow: '0 0 8px rgba(57, 255, 20, 0.3)' }}>{completedCount}</span>
                       </div>
-                      <div className="bg-success-subtle text-success rounded-3 p-3">
-                        <i className="bi bi-calendar-check fs-4"></i>
+                      <div className="rounded-3 p-3 d-flex align-items-center justify-content-center" style={{ width: '46px', height: '46px', backgroundColor: 'rgba(57, 255, 20, 0.12)', color: 'var(--neon-green)', border: '1px solid rgba(57, 255, 20, 0.3)', boxShadow: '0 0 8px rgba(57, 255, 20, 0.3)' }}>
+                        <i className="bi bi-calendar-check fs-5"></i>
                       </div>
                     </div>
                   </div>
                   <div className="col-6 col-md-3">
-                    <div className="premium-card p-3 d-flex align-items-center justify-content-between h-100">
+                    <div className="premium-card p-3 d-flex align-items-center justify-content-between h-100" style={{ border: '1px solid rgba(255, 153, 0, 0.25)', boxShadow: '0 0 10px rgba(255, 153, 0, 0.05)' }}>
                       <div>
-                        <span className="text-muted small d-block mb-1 fw-medium">진행 중</span>
-                        <span className="h3 mb-0 fw-bold text-warning">{pendingCount}</span>
+                        <span className="text-secondary small d-block mb-1 fw-medium">진행 중</span>
+                        <span className="h3 mb-0 fw-bold" style={{ color: '#ff9900', textShadow: '0 0 8px rgba(255, 153, 0, 0.3)' }}>{pendingCount}</span>
                       </div>
-                      <div className="bg-warning-subtle text-warning rounded-3 p-3">
-                        <i className="bi bi-hourglass-split fs-4"></i>
+                      <div className="rounded-3 p-3 d-flex align-items-center justify-content-center" style={{ width: '46px', height: '46px', backgroundColor: 'rgba(255, 153, 0, 0.12)', color: '#ff9900', border: '1px solid rgba(255, 153, 0, 0.3)', boxShadow: '0 0 8px rgba(255, 153, 0, 0.3)' }}>
+                        <i className="bi bi-hourglass-split fs-5"></i>
                       </div>
                     </div>
                   </div>
                   <div className="col-6 col-md-3">
-                    <div className="premium-card p-3 d-flex align-items-center justify-content-between h-100">
+                    <div className="premium-card p-3 d-flex align-items-center justify-content-between h-100" style={{ border: '1px solid rgba(255, 0, 127, 0.25)', boxShadow: '0 0 10px rgba(255, 0, 127, 0.05)' }}>
                       <div>
-                        <span className="text-muted small d-block mb-1 fw-medium">중요 일정</span>
-                        <span className="h3 mb-0 fw-bold text-danger">{importantCount}</span>
+                        <span className="text-secondary small d-block mb-1 fw-medium">중요 일정</span>
+                        <span className="h3 mb-0 fw-bold" style={{ color: 'var(--neon-pink)', textShadow: '0 0 8px rgba(255, 0, 127, 0.3)' }}>{importantCount}</span>
                       </div>
-                      <div className="bg-danger-subtle text-danger rounded-3 p-3">
-                        <i className="bi bi-star-fill fs-4"></i>
+                      <div className="rounded-3 p-3 d-flex align-items-center justify-content-center" style={{ width: '46px', height: '46px', backgroundColor: 'rgba(255, 0, 127, 0.12)', color: 'var(--neon-pink)', border: '1px solid rgba(255, 0, 127, 0.3)', boxShadow: '0 0 8px rgba(255, 0, 127, 0.3)' }}>
+                        <i className="bi bi-star-fill fs-5"></i>
                       </div>
                     </div>
                   </div>
@@ -1695,13 +1695,14 @@ ${memo.content}`;
                             <div key={memo.id} className="col-md-6 col-xl-6">
                               <div
                                 onClick={() => setSelectedMemo(memo)}
-                                className="card border-0 p-4 h-100 rounded-4 transition-all position-relative shadow-sm hover-up"
+                                className="card border-0 p-4 h-100 rounded-4 transition-all position-relative hover-up"
                                 style={{
-                                  backgroundColor: memo.color || '#fffbeb',
-                                  color: isDarkColor ? '#ffffff' : '#2b2d42',
-                                  boxShadow: '0 8px 24px rgba(0, 0, 0, 0.05)',
+                                  backgroundColor: 'rgba(10, 10, 20, 0.8)',
+                                  color: '#e2e8f0',
+                                  border: `1px solid ${hexToRgba(memo.color || '#ff007f', 0.25)}`,
+                                  borderLeft: `5px solid ${memo.color || '#ff007f'}`,
+                                  boxShadow: `0 0 15px ${hexToRgba(memo.color || '#ff007f', 0.15)}, inset 0 0 10px ${hexToRgba(memo.color || '#ff007f', 0.05)}`,
                                   transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
-                                  borderLeft: `5px solid ${isDarkColor ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.15)'}`,
                                   cursor: 'pointer'
                                 }}
                               >
@@ -1713,6 +1714,7 @@ ${memo.content}`;
                                         fontSize: '1.1rem', 
                                         letterSpacing: '-0.3px', 
                                         maxWidth: '80%',
+                                        color: '#ffffff',
                                         fontFamily: getSelectedFontCss()
                                       }}
                                     >
