@@ -2363,22 +2363,101 @@ ${memo.content}`;
                 </div>
               </div>
 
-              <div className="d-flex gap-2 mt-auto">
+              <div className="d-flex gap-3 mt-auto align-items-center w-100" style={{ maxWidth: '650px', margin: '0 auto' }}>
+                <button 
+                  type="button" 
+                  onClick={handleCancelMemoEdit} 
+                  className="btn d-flex align-items-center justify-content-center gap-2 px-4 py-3 fw-bold transition-all" 
+                  style={{ 
+                    borderRadius: '14px',
+                    flex: '1',
+                    background: 'rgba(241, 245, 249, 0.9)',
+                    border: '1px solid rgba(226, 232, 240, 0.8)',
+                    color: '#475569',
+                    fontSize: '0.95rem',
+                    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.02)',
+                    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
+                  }}
+                  onMouseOver={(e) => {
+                    e.currentTarget.style.background = '#e2e8f0';
+                    e.currentTarget.style.transform = 'translateY(-2px)';
+                    e.currentTarget.style.boxShadow = '0 6px 12px rgba(0, 0, 0, 0.05)';
+                  }}
+                  onMouseOut={(e) => {
+                    e.currentTarget.style.background = 'rgba(241, 245, 249, 0.9)';
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.02)';
+                  }}
+                  onMouseDown={(e) => {
+                    e.currentTarget.style.transform = 'translateY(0) scale(0.97)';
+                  }}
+                >
+                  <i className="bi bi-arrow-left-circle-fill fs-5"></i>
+                  <span>취소</span>
+                </button>
+
                 {editingMemoId && (
                   <button 
                     type="button" 
                     onClick={handleSaveMemoOnly} 
-                    className="btn btn-success text-white px-4 py-2.5 fw-bold animate-fade-in" 
-                    style={{ borderRadius: '10px' }}
+                    className="btn d-flex align-items-center justify-content-center gap-2 px-4 py-3 fw-bold text-white transition-all animate-fade-in" 
+                    style={{ 
+                      borderRadius: '14px',
+                      flex: '1',
+                      background: 'linear-gradient(135deg, #34d399, #10b981)',
+                      border: 'none',
+                      fontSize: '0.95rem',
+                      boxShadow: '0 8px 20px rgba(16, 185, 129, 0.2)',
+                      transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
+                    }}
+                    onMouseOver={(e) => {
+                      e.currentTarget.style.background = 'linear-gradient(135deg, #10b981, #059669)';
+                      e.currentTarget.style.transform = 'translateY(-2px)';
+                      e.currentTarget.style.boxShadow = '0 10px 24px rgba(16, 185, 129, 0.35)';
+                    }}
+                    onMouseOut={(e) => {
+                      e.currentTarget.style.background = 'linear-gradient(135deg, #34d399, #10b981)';
+                      e.currentTarget.style.transform = 'translateY(0)';
+                      e.currentTarget.style.boxShadow = '0 8px 20px rgba(16, 185, 129, 0.2)';
+                    }}
+                    onMouseDown={(e) => {
+                      e.currentTarget.style.transform = 'translateY(0) scale(0.97)';
+                    }}
                   >
-                    저장
+                    <i className="bi bi-save-fill fs-5"></i>
+                    <span>임시 저장</span>
                   </button>
                 )}
-                <button type="submit" className={`btn w-100 py-2.5 fw-bold ${editingMemoId ? 'btn-warning text-dark' : 'btn-premium-primary'}`} style={{ borderRadius: '10px' }}>
-                  {editingMemoId ? '수정 완료' : '메모 등록'}
-                </button>
-                <button type="button" onClick={handleCancelMemoEdit} className="btn btn-outline-secondary px-4 py-2.5" style={{ borderRadius: '10px' }}>
-                  취소
+
+                <button 
+                  type="submit" 
+                  className="btn d-flex align-items-center justify-content-center gap-2 py-3 fw-bold text-white transition-all" 
+                  style={{ 
+                    borderRadius: '14px',
+                    flex: '2',
+                    background: editingMemoId ? 'linear-gradient(135deg, #fbbf24, #f59e0b)' : 'linear-gradient(135deg, #6366f1, #3b82f6)',
+                    color: editingMemoId ? '#1e293b' : '#ffffff',
+                    border: 'none',
+                    fontSize: '0.95rem',
+                    boxShadow: editingMemoId ? '0 8px 20px rgba(245, 158, 11, 0.2)' : '0 8px 20px rgba(59, 130, 246, 0.25)',
+                    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
+                  }}
+                  onMouseOver={(e) => {
+                    e.currentTarget.style.background = editingMemoId ? 'linear-gradient(135deg, #f59e0b, #d97706)' : 'linear-gradient(135deg, #4f46e5, #2563eb)';
+                    e.currentTarget.style.transform = 'translateY(-2px)';
+                    e.currentTarget.style.boxShadow = editingMemoId ? '0 10px 24px rgba(245, 158, 11, 0.35)' : '0 10px 24px rgba(59, 130, 246, 0.4)';
+                  }}
+                  onMouseOut={(e) => {
+                    e.currentTarget.style.background = editingMemoId ? 'linear-gradient(135deg, #fbbf24, #f59e0b)' : 'linear-gradient(135deg, #6366f1, #3b82f6)';
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.boxShadow = editingMemoId ? '0 8px 20px rgba(245, 158, 11, 0.2)' : '0 8px 20px rgba(59, 130, 246, 0.25)';
+                  }}
+                  onMouseDown={(e) => {
+                    e.currentTarget.style.transform = 'translateY(0) scale(0.97)';
+                  }}
+                >
+                  <i className="bi bi-check-circle-fill fs-5"></i>
+                  <span>{editingMemoId ? '수정 완료' : '메모 등록'}</span>
                 </button>
               </div>
             </form>
