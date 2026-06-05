@@ -38,6 +38,7 @@ model Schedule {
   category    String
   isCompleted Boolean  @default(false)
   createdAt   DateTime @default(now())
+  hasTime     Boolean  @default(true)
 
   @@map("schedules")
 }

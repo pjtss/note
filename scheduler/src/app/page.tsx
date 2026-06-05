@@ -64,11 +64,14 @@ export default function Home() {
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
   const [isMemoModalOpen, setIsMemoModalOpen] = useState(false);
 
-  // 일정 입력 폼 상태
+  // 일정 입력 폼 상태 (날짜/시간 분리형 및 시간설정 토글)
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [startTime, setStartTime] = useState('');
-  const [endTime, setEndTime] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [startTimeVal, setStartTimeVal] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [endTimeVal, setEndTimeVal] = useState('');
+  const [hasTime, setHasTime] = useState(false);
   const [category, setCategory] = useState<ScheduleCategory>('Work');
   const [editingScheduleId, setEditingScheduleId] = useState<string | null>(null);
 
@@ -208,8 +211,9 @@ export default function Home() {
           // 서비스 워커를 통해 웹 푸시 노출
           navigator.serviceWorker.ready.then((registration) => {
             const importanceEmoji = schedule.category === 'Important' ? '🚨 [중요 일정] ' : '📅 ';
+            const timeStr = schedule.hasTime ? schedule.startTime.replace('T', ' ').slice(0, 16) : '하루 종일';
             registration.showNotification(`${importanceEmoji}Antigravity 스케줄 알림`, {
-              body: `"${schedule.title}" 일정이 지금 시작되었습니다!\n⏰ 시간: ${schedule.startTime.replace('T', ' ')}`,
+              body: `"${schedule.title}" 일정이 지금 시작되었습니다!\n⏰ 시간: ${timeStr}`,
               icon: '/next.svg',
               badge: '/next.svg',
               vibrate: [200, 100, 200],
@@ -331,7 +335,7 @@ export default function Home() {
   }, [pomodoroIsRunning, pomodoroSeconds, pomodoroMode, pomodoroCustomFocus, pomodoroCustomBreak]);
 
   // D-Day & 남은 시간 실시간 계산 헬퍼
-  const calculateDDay = (startTimeStr: string, endTimeStr: string, isCompleted: boolean) => {
+  const calculateDDay = (startTimeStr: string, endTimeStr: string, isCompleted: boolean, hasTimeVal: boolean = true) => {
     if (isCompleted) return { text: '완료', colorClass: 'bg-secondary text-white' };
     const now = Date.now();
     const start = new Date(startTimeStr).getTime();
@@ -345,12 +349,20 @@ export default function Home() {
     }
 
     const diff = start - now;
-    const diffDays = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const diffDays = Math.ceil(diff / (1000 * 60 * 60 * 24));
+
+    if (!hasTimeVal) {
+      if (diffDays > 0) {
+        return { text: `D-${diffDays}`, colorClass: 'bg-primary text-white' };
+      }
+      return { text: `D-Day`, colorClass: 'bg-warning text-dark' };
+    }
+
     const diffHours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
     const diffMins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
 
-    if (diffDays > 0) {
-      return { text: `D-${diffDays} (${diffHours}시간 남음)`, colorClass: 'bg-primary text-white' };
+    if (diffDays > 1) {
+      return { text: `D-${diffDays - 1} (${diffHours}시간 남음)`, colorClass: 'bg-primary text-white' };
     }
     if (diffHours > 0) {
       return { text: `D-Day (${diffHours}시간 남음)`, colorClass: 'bg-warning text-dark' };
@@ -550,21 +562,52 @@ ${memo.content}`;
     };
   };
 
+  // UTC와 로컬 시간 변환을 위한 병합 도구
+  const getUtcTimes = () => {
+    let startIso = '';
+    let endIso = '';
+
+    if (hasTime) {
+      const startLocal = new Date(`${startDate}T${startTimeVal || '00:00'}:00`);
+      const endLocal = new Date(`${endDate}T${endTimeVal || '00:00'}:00`);
+      startIso = isNaN(startLocal.getTime()) ? new Date().toISOString() : startLocal.toISOString();
+      endIso = isNaN(endLocal.getTime()) ? new Date().toISOString() : endLocal.toISOString();
+    } else {
+      const startLocal = new Date(`${startDate}T00:00:00`);
+      const endLocal = new Date(`${endDate}T00:00:00`);
+      startIso = isNaN(startLocal.getTime()) ? new Date().toISOString() : startLocal.toISOString();
+      endIso = isNaN(endLocal.getTime()) ? new Date().toISOString() : endLocal.toISOString();
+    }
+
+    return { startIso, endIso };
+  };
+
   useEffect(() => {
     setMounted(true);
     
-    // 기본 날짜 시간 설정 (오늘 날짜 기준 1시간 단위)
+    // 기본 날짜 시간 설정 (로컬 브라우저 타임존 기준)
     const now = new Date();
     const start = new Date(now.getTime() + 60 * 60 * 1000);
     const end = new Date(start.getTime() + 60 * 60 * 1000);
     
-    const formatDateTime = (date: Date) => {
-      const tzOffset = date.getTimezoneOffset() * 60000;
-      return new Date(date.getTime() - tzOffset).toISOString().slice(0, 16);
+    const formatDateStr = (date: Date) => {
+      const yyyy = date.getFullYear();
+      const mm = String(date.getMonth() + 1).padStart(2, '0');
+      const dd = String(date.getDate()).padStart(2, '0');
+      return `${yyyy}-${mm}-${dd}`;
     };
 
-    setStartTime(formatDateTime(start));
-    setEndTime(formatDateTime(end));
+    const formatTimeStr = (date: Date) => {
+      const hh = String(date.getHours()).padStart(2, '0');
+      const mm = String(date.getMinutes()).padStart(2, '0');
+      return `${hh}:${mm}`;
+    };
+
+    setStartDate(formatDateStr(start));
+    setEndDate(formatDateStr(end));
+    setStartTimeVal(formatTimeStr(start));
+    setEndTimeVal(formatTimeStr(end));
+    setHasTime(false);
   }, []);
 
   if (!mounted) return null;
@@ -618,26 +661,30 @@ ${memo.content}`;
   // 일정 제출 핸들러
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim() || !startTime || !endTime) return;
+    if (!title.trim() || !startDate || !endDate) return;
 
     try {
+      const { startIso, endIso } = getUtcTimes();
+
       if (editingScheduleId) {
         await updateScheduleDetails(editingScheduleId, {
           title,
           description,
-          startTime: new Date(startTime).toISOString(),
-          endTime: new Date(endTime).toISOString(),
-          category
+          startTime: startIso,
+          endTime: endIso,
+          category,
+          hasTime
         });
         setEditingScheduleId(null);
       } else {
         await addSchedule({
           title,
           description,
-          startTime: new Date(startTime).toISOString(),
-          endTime: new Date(endTime).toISOString(),
+          startTime: startIso,
+          endTime: endIso,
           category,
-          userId: user?.id // 외래 키 바인딩
+          userId: user?.id,
+          hasTime
         } as any);
       }
 
@@ -648,12 +695,23 @@ ${memo.content}`;
       const now = new Date();
       const start = new Date(now.getTime() + 60 * 60 * 1000);
       const end = new Date(start.getTime() + 60 * 60 * 1000);
-      const formatDateTime = (date: Date) => {
-        const tzOffset = date.getTimezoneOffset() * 60000;
-        return new Date(date.getTime() - tzOffset).toISOString().slice(0, 16);
+      const formatDateStr = (date: Date) => {
+        const yyyy = date.getFullYear();
+        const mm = String(date.getMonth() + 1).padStart(2, '0');
+        const dd = String(date.getDate()).padStart(2, '0');
+        return `${yyyy}-${mm}-${dd}`;
       };
-      setStartTime(formatDateTime(start));
-      setEndTime(formatDateTime(end));
+      const formatTimeStr = (date: Date) => {
+        const hh = String(date.getHours()).padStart(2, '0');
+        const mm = String(date.getMinutes()).padStart(2, '0');
+        return `${hh}:${mm}`;
+      };
+
+      setStartDate(formatDateStr(start));
+      setEndDate(formatDateStr(end));
+      setStartTimeVal(formatTimeStr(start));
+      setEndTimeVal(formatTimeStr(end));
+      setHasTime(false);
       setCategory('Work');
       setIsScheduleModalOpen(false);
     } catch (err) {
@@ -663,14 +721,16 @@ ${memo.content}`;
 
   // 일정 수정 시 창 닫지 않고 바로 저장하는 핸들러
   const handleSaveScheduleOnly = async () => {
-    if (!editingScheduleId || !title.trim() || !startTime || !endTime) return;
+    if (!editingScheduleId || !title.trim() || !startDate || !endDate) return;
     try {
+      const { startIso, endIso } = getUtcTimes();
       await updateScheduleDetails(editingScheduleId, {
         title,
         description,
-        startTime: new Date(startTime).toISOString(),
-        endTime: new Date(endTime).toISOString(),
-        category
+        startTime: startIso,
+        endTime: endIso,
+        category,
+        hasTime
       });
       showToast('💾 일정 변경 사항이 저장되었습니다.');
     } catch (err) {
@@ -683,16 +743,30 @@ ${memo.content}`;
     setEditingScheduleId(schedule.id);
     setTitle(schedule.title);
     setDescription(schedule.description || '');
-    
-    const formatDateTime = (isoStr: string) => {
-      const date = new Date(isoStr);
-      const tzOffset = date.getTimezoneOffset() * 60000;
-      return new Date(date.getTime() - tzOffset).toISOString().slice(0, 16);
+    setCategory(schedule.category);
+    setHasTime(schedule.hasTime);
+
+    const dateObj = new Date(schedule.startTime);
+    const endDateObj = new Date(schedule.endTime);
+
+    const formatDateStr = (date: Date) => {
+      const yyyy = date.getFullYear();
+      const mm = String(date.getMonth() + 1).padStart(2, '0');
+      const dd = String(date.getDate()).padStart(2, '0');
+      return `${yyyy}-${mm}-${dd}`;
     };
 
-    setStartTime(formatDateTime(schedule.startTime));
-    setEndTime(formatDateTime(schedule.endTime));
-    setCategory(schedule.category);
+    const formatTimeStr = (date: Date) => {
+      const hh = String(date.getHours()).padStart(2, '0');
+      const mm = String(date.getMinutes()).padStart(2, '0');
+      return `${hh}:${mm}`;
+    };
+
+    setStartDate(formatDateStr(dateObj));
+    setEndDate(formatDateStr(endDateObj));
+    setStartTimeVal(formatTimeStr(dateObj));
+    setEndTimeVal(formatTimeStr(endDateObj));
+    
     setIsScheduleModalOpen(true);
   };
 
@@ -705,12 +779,23 @@ ${memo.content}`;
     const now = new Date();
     const start = new Date(now.getTime() + 60 * 60 * 1000);
     const end = new Date(start.getTime() + 60 * 60 * 1000);
-    const formatDateTime = (date: Date) => {
-      const tzOffset = date.getTimezoneOffset() * 60000;
-      return new Date(date.getTime() - tzOffset).toISOString().slice(0, 16);
+    const formatDateStr = (date: Date) => {
+      const yyyy = date.getFullYear();
+      const mm = String(date.getMonth() + 1).padStart(2, '0');
+      const dd = String(date.getDate()).padStart(2, '0');
+      return `${yyyy}-${mm}-${dd}`;
     };
-    setStartTime(formatDateTime(start));
-    setEndTime(formatDateTime(end));
+    const formatTimeStr = (date: Date) => {
+      const hh = String(date.getHours()).padStart(2, '0');
+      const mm = String(date.getMinutes()).padStart(2, '0');
+      return `${hh}:${mm}`;
+    };
+
+    setStartDate(formatDateStr(start));
+    setEndDate(formatDateStr(end));
+    setStartTimeVal(formatTimeStr(start));
+    setEndTimeVal(formatTimeStr(end));
+    setHasTime(false);
     setCategory('Work');
     setIsScheduleModalOpen(false);
   };
@@ -827,16 +912,21 @@ ${memo.content}`;
   };
 
   // 한국어 날짜 포맷터
-  const formatDateKST = (isoString: string) => {
+  const formatDateKST = (isoString: string, showTime: boolean = true) => {
     const date = new Date(isoString);
-    return new Intl.DateTimeFormat('ko-KR', {
+    const options: Intl.DateTimeFormatOptions = {
       month: 'short',
       day: 'numeric',
-      weekday: 'short',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false
-    }).format(date);
+      weekday: 'short'
+    };
+
+    if (showTime) {
+      options.hour = '2-digit';
+      options.minute = '2-digit';
+      options.hour12 = false;
+    }
+
+    return new Intl.DateTimeFormat('ko-KR', options).format(date);
   };
 
   // 메모 필터링 로직
@@ -1355,7 +1445,7 @@ ${memo.content}`;
                                       </span>
                                       
                                       {(() => {
-                                        const dday = calculateDDay(schedule.startTime, schedule.endTime, schedule.isCompleted);
+                                        const dday = calculateDDay(schedule.startTime, schedule.endTime, schedule.isCompleted, schedule.hasTime);
                                         return (
                                           <span className={`badge rounded-pill py-0.5 px-2 ${dday.colorClass}`} style={{ fontSize: '0.65rem', fontWeight: 600 }}>
                                             {dday.text}
@@ -1384,12 +1474,12 @@ ${memo.content}`;
                                     <div className="d-flex align-items-center gap-3 text-muted small" style={{ fontSize: '0.75rem' }}>
                                       <span className="d-flex align-items-center gap-1">
                                         <i className="bi bi-calendar-event"></i>
-                                        {formatDateKST(schedule.startTime)}
+                                        {formatDateKST(schedule.startTime, schedule.hasTime)}
                                       </span>
                                       <span>→</span>
                                       <span className="d-flex align-items-center gap-1">
                                         <i className="bi bi-clock"></i>
-                                        {formatDateKST(schedule.endTime)}
+                                        {formatDateKST(schedule.endTime, schedule.hasTime)}
                                       </span>
                                     </div>
                                   </div>
@@ -1601,7 +1691,7 @@ ${memo.content}`;
                                   >
                                     <span className="d-flex align-items-center gap-1">
                                       <i className="bi bi-clock-history"></i>
-                                      {formatDateKST(memo.createdAt)}
+                                      {formatDateKST(memo.createdAt, true)}
                                     </span>
                                     <span className="fw-semibold">Memo Card</span>
                                   </div>
@@ -1653,9 +1743,9 @@ ${memo.content}`;
                 </h4>
                 <div className="d-flex flex-wrap align-items-center gap-2 mt-1" style={{ opacity: 0.8 }}>
                   <small style={{ fontSize: '0.75rem' }} className="d-flex align-items-center gap-1">
-                    <i className="bi bi-clock-history"></i>
-                    {formatDateKST(selectedMemo.createdAt)} 작성됨
-                  </small>
+                                    <i className="bi bi-clock-history"></i>
+                                    {formatDateKST(selectedMemo.createdAt, true)} 작성됨
+                                  </small>
                   {(() => {
                     const stats = getMemoStats(selectedMemo.content || '');
                     return (
@@ -1903,59 +1993,108 @@ ${memo.content}`;
           className="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center px-3"
           style={{
             zIndex: 10000,
-            backgroundColor: 'rgba(15, 23, 42, 0.65)',
-            backdropFilter: 'blur(12px)',
+            backgroundColor: deleteConfirmTarget.type === 'memo' ? 'rgba(15, 23, 42, 0.85)' : 'rgba(15, 23, 42, 0.65)',
+            backdropFilter: 'blur(16px)',
             transition: 'all 0.3s ease-in-out'
           }}
           onClick={() => setDeleteConfirmTarget(null)}
         >
-          <div 
-            className="premium-card p-4 w-100 rounded-4 border-0 shadow-lg position-relative scale-in"
-            style={{
-              maxWidth: '400px',
-              backgroundColor: '#ffffff',
-              color: '#2b2d42',
-              boxShadow: '0 25px 60px rgba(0, 0, 0, 0.3)',
-              borderTop: '6px solid #dc3545',
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Header Icon */}
-            <div className="text-center mb-3">
-              <div className="bg-danger-subtle text-danger rounded-circle d-inline-flex align-items-center justify-content-center p-3 mb-2 shadow-sm" style={{ width: '56px', height: '56px' }}>
-                <i className="bi bi-exclamation-triangle-fill fs-3"></i>
+          {deleteConfirmTarget.type === 'memo' ? (
+            /* 메모 삭제용 풀스크린 글래스모피즘 컨펌 보드 */
+            <div 
+              className="w-100 h-100 d-flex flex-column align-items-center justify-content-center scale-in text-white p-4"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* 3D 느낌의 크고 화려한 경고 비주얼 */}
+              <div 
+                className="mb-4 d-flex align-items-center justify-content-center rounded-circle"
+                style={{
+                  width: '120px',
+                  height: '120px',
+                  background: 'radial-gradient(circle, #ff8787 0%, #fa5252 100%)',
+                  boxShadow: '0 15px 35px rgba(250, 82, 82, 0.4), inset 0 -8px 0px rgba(0,0,0,0.15)',
+                  transform: 'perspective(500px) translateZ(20px)',
+                  animation: 'pulse 2s infinite'
+                }}
+              >
+                <i className="bi bi-trash-fill text-white" style={{ fontSize: '3.5rem' }}></i>
               </div>
-              <h5 className="fw-bold mb-1">삭제 확인</h5>
-            </div>
 
-            {/* Body Text */}
-            <div className="text-center py-2 mb-4 text-secondary" style={{ fontSize: '0.95rem', lineHeight: '1.5' }}>
-              삭제하시겠습니까?<br />
-              {deleteConfirmTarget.type === 'memo' ? (
-                <small className="text-muted" style={{ fontSize: '0.8rem' }}>(메모는 보관 처리되며, 언제든지 복구할 수 있습니다.)</small>
-              ) : (
+              <h2 className="fw-bold mb-2 display-font text-white">메모를 삭제하시겠습니까?</h2>
+              <p className="text-white-50 text-center mb-5" style={{ maxWidth: '500px', fontSize: '1.1rem', lineHeight: '1.6' }}>
+                선택하신 메모는 복구할 수 없도록 완전히 삭제되며,<br />
+                데이터베이스에서 영구히 제거됩니다.
+              </p>
+
+              {/* 큼직한 가로 배치 취소/삭제 단추 */}
+              <div className="d-flex gap-3 justify-content-center w-100" style={{ maxWidth: '480px' }}>
+                <button
+                  onClick={() => setDeleteConfirmTarget(null)}
+                  className="btn btn-outline-light py-3.5 rounded-4 fw-bold flex-grow-1"
+                  style={{ fontSize: '1.1rem', backdropFilter: 'blur(5px)', border: '2px solid rgba(255,255,255,0.4)', borderRadius: '12px' }}
+                >
+                  아니오, 유지할래요
+                </button>
+                <button
+                  onClick={handleDeleteConfirm}
+                  className="btn btn-danger py-3.5 rounded-4 fw-bold flex-grow-1 shadow-lg"
+                  style={{
+                    fontSize: '1.1rem',
+                    backgroundColor: '#fa5252',
+                    border: 'none',
+                    boxShadow: '0 10px 25px rgba(250, 82, 82, 0.3)',
+                    borderRadius: '12px'
+                  }}
+                >
+                  네, 삭제합니다
+                </button>
+              </div>
+            </div>
+          ) : (
+            /* 일정 삭제용 컴팩트 모달 */
+            <div 
+              className="premium-card p-4 w-100 rounded-4 border-0 shadow-lg position-relative scale-in bg-white"
+              style={{
+                maxWidth: '400px',
+                color: '#2b2d42',
+                boxShadow: '0 25px 60px rgba(0, 0, 0, 0.3)',
+                borderTop: '6px solid #dc3545',
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header Icon */}
+              <div className="text-center mb-3">
+                <div className="bg-danger-subtle text-danger rounded-circle d-inline-flex align-items-center justify-content-center p-3 mb-2 shadow-sm" style={{ width: '56px', height: '56px' }}>
+                  <i className="bi bi-exclamation-triangle-fill fs-3"></i>
+                </div>
+                <h5 className="fw-bold mb-1">삭제 확인</h5>
+              </div>
+
+              {/* Body Text */}
+              <div className="text-center py-2 mb-4 text-secondary" style={{ fontSize: '0.95rem', lineHeight: '1.5' }}>
+                삭제하시겠습니까?<br />
                 <small className="text-muted" style={{ fontSize: '0.8rem' }}>(이 작업은 되돌릴 수 없습니다.)</small>
-              )}
-            </div>
+              </div>
 
-            {/* Footer Buttons */}
-            <div className="d-flex gap-2">
-              <button
-                onClick={() => setDeleteConfirmTarget(null)}
-                className="btn btn-light border w-100 py-2.5 rounded-3 fw-semibold"
-                style={{ fontSize: '0.9rem' }}
-              >
-                취소
-              </button>
-              <button
-                onClick={handleDeleteConfirm}
-                className="btn btn-danger w-100 py-2.5 rounded-3 fw-semibold shadow-sm"
-                style={{ fontSize: '0.9rem' }}
-              >
-                삭제
-              </button>
+              {/* Footer Buttons */}
+              <div className="d-flex gap-2">
+                <button
+                  onClick={() => setDeleteConfirmTarget(null)}
+                  className="btn btn-light border w-100 py-2.5 rounded-3 fw-semibold"
+                  style={{ fontSize: '0.9rem' }}
+                >
+                  취소
+                </button>
+                <button
+                  onClick={handleDeleteConfirm}
+                  className="btn btn-danger w-100 py-2.5 rounded-3 fw-semibold shadow-sm"
+                  style={{ fontSize: '0.9rem' }}
+                >
+                  삭제
+                </button>
+              </div>
             </div>
-          </div>
+          )}
         </div>
       )}
 
@@ -2021,29 +2160,71 @@ ${memo.content}`;
                 />
               </div>
 
+              <div className="form-check mb-3 text-start">
+                <input
+                  type="checkbox"
+                  className="form-check-input cursor-pointer"
+                  id="hasTime"
+                  checked={hasTime}
+                  onChange={(e) => setHasTime(e.target.checked)}
+                />
+                <label className="form-check-label small text-muted cursor-pointer" htmlFor="hasTime" style={{ userSelect: 'none' }}>
+                  ⏰ 시간 설정 활성화 (체크 해제 시 하루 종일 일정으로 등록)
+                </label>
+              </div>
+
               <div className="row g-2 mb-3 text-start">
-                <div className="col-6">
-                  <label htmlFor="startTime" className="form-label small fw-semibold text-muted">시작 시간 *</label>
+                <div className="col-12 col-md-6">
+                  <label htmlFor="startDate" className="form-label small fw-semibold text-muted">시작 날짜 *</label>
                   <input
-                    type="datetime-local"
-                    id="startTime"
+                    type="date"
+                    id="startDate"
                     className="form-control form-premium-control"
-                    value={startTime}
-                    onChange={(e) => setStartTime(e.target.value)}
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
                     required
                   />
                 </div>
-                <div className="col-6">
-                  <label htmlFor="endTime" className="form-label small fw-semibold text-muted">종료 시간 *</label>
+                {hasTime && (
+                  <div className="col-12 col-md-6">
+                    <label htmlFor="startTimeVal" className="form-label small fw-semibold text-muted">시작 시간 *</label>
+                    <input
+                      type="time"
+                      id="startTimeVal"
+                      className="form-control form-premium-control"
+                      value={startTimeVal}
+                      onChange={(e) => setStartTimeVal(e.target.value)}
+                      required
+                    />
+                  </div>
+                )}
+              </div>
+
+              <div className="row g-2 mb-3 text-start">
+                <div className="col-12 col-md-6">
+                  <label htmlFor="endDate" className="form-label small fw-semibold text-muted">종료 날짜 *</label>
                   <input
-                    type="datetime-local"
-                    id="endTime"
+                    type="date"
+                    id="endDate"
                     className="form-control form-premium-control"
-                    value={endTime}
-                    onChange={(e) => setEndTime(e.target.value)}
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
                     required
                   />
                 </div>
+                {hasTime && (
+                  <div className="col-12 col-md-6">
+                    <label htmlFor="endTimeVal" className="form-label small fw-semibold text-muted">종료 시간 *</label>
+                    <input
+                      type="time"
+                      id="endTimeVal"
+                      className="form-control form-premium-control"
+                      value={endTimeVal}
+                      onChange={(e) => setEndTimeVal(e.target.value)}
+                      required
+                    />
+                  </div>
+                )}
               </div>
 
               <div className="mb-4 text-start">
@@ -2085,10 +2266,10 @@ ${memo.content}`;
         </div>
       )}
 
-      {/* 팝업 모달로 동작하는 메모 등록/수정 창 */}
+      {/* 팝업 모달로 동작하는 메모 등록/수정 창 (풀스크린화) */}
       {isMemoModalOpen && (
         <div 
-          className="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center px-3"
+          className="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-stretch justify-content-stretch"
           style={{
             zIndex: 10000,
             backgroundColor: 'rgba(15, 23, 42, 0.65)',
@@ -2098,36 +2279,36 @@ ${memo.content}`;
           onClick={handleCancelMemoEdit}
         >
           <div 
-            className="premium-card p-4 w-100 rounded-4 border-0 shadow-lg position-relative scale-in bg-white"
+            className="w-100 h-100 border-0 shadow-lg position-relative scale-in bg-white d-flex flex-column"
             style={{
-              maxWidth: '550px',
               color: '#2b2d42',
-              boxShadow: '0 25px 60px rgba(0, 0, 0, 0.3)',
-              borderTop: `6px solid ${editingMemoId ? '#ffbd2e' : '#0d6efd'}`
+              borderTop: `6px solid ${editingMemoId ? '#ffbd2e' : '#0d6efd'}`,
+              borderRadius: 0,
+              padding: '2.5rem'
             }}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="d-flex align-items-center justify-content-between mb-4 border-bottom pb-2" style={{ borderColor: 'rgba(0,0,0,0.08)' }}>
-              <h5 className="fw-bold mb-0 d-flex align-items-center gap-2" style={{ color: 'inherit' }}>
+              <h5 className="fw-bold mb-0 h4 d-flex align-items-center gap-2" style={{ color: 'inherit' }}>
                 <i className={`bi ${editingMemoId ? 'bi-sticky text-warning' : 'bi-sticky-fill text-primary'}`}></i>
                 {editingMemoId ? '메모 수정하기' : '새로운 메모 등록'}
               </h5>
               <button 
                 onClick={handleCancelMemoEdit}
                 className="btn btn-sm rounded-circle d-flex align-items-center justify-content-center border-0 p-2"
-                style={{ backgroundColor: 'rgba(0,0,0,0.06)', width: '32px', height: '32px', color: 'inherit' }}
+                style={{ backgroundColor: 'rgba(0,0,0,0.06)', width: '36px', height: '36px', color: 'inherit' }}
               >
-                <i className="bi bi-x-lg"></i>
+                <i className="bi bi-x-lg fs-5"></i>
               </button>
             </div>
 
-            <form onSubmit={handleMemoSubmit}>
+            <form onSubmit={handleMemoSubmit} className="d-flex flex-column flex-grow-1">
               <div className="mb-3 text-start">
                 <label htmlFor="memoTitle" className="form-label small fw-semibold text-muted">메모 제목 *</label>
                 <input
                   type="text"
                   id="memoTitle"
-                  className="form-control form-premium-control"
+                  className="form-control form-premium-control fs-4 py-2"
                   placeholder="예: 아이디어 영감 기록"
                   value={memoTitle}
                   onChange={(e) => setMemoTitle(e.target.value)}
@@ -2136,18 +2317,21 @@ ${memo.content}`;
                 />
               </div>
 
-              <div className="mb-3 text-start">
+              <div className="mb-3 text-start d-flex flex-column flex-grow-1">
                 <label htmlFor="memoContent" className="form-label small fw-semibold text-muted">메모 내용 *</label>
                 <textarea
                   id="memoContent"
-                  className="form-control form-premium-control"
-                  rows={5}
+                  className="form-control form-premium-control flex-grow-1"
                   placeholder="자유롭게 생각을 기록해 보세요... (/checkbox 입력 시 체크박스로 자동 변환)"
                   value={memoContent}
                   onChange={(e) => setMemoContent(e.target.value)}
                   onKeyDown={handleMemoContentKeyDown}
                   required
-                  style={{ fontFamily: getSelectedFontCss() }}
+                  style={{ 
+                    fontFamily: getSelectedFontCss(),
+                    resize: 'none',
+                    minHeight: '45vh'
+                  }}
                 />
               </div>
 
@@ -2179,21 +2363,21 @@ ${memo.content}`;
                 </div>
               </div>
 
-              <div className="d-flex gap-2">
+              <div className="d-flex gap-2 mt-auto">
                 {editingMemoId && (
                   <button 
                     type="button" 
                     onClick={handleSaveMemoOnly} 
-                    className="btn btn-success text-white px-3 fw-bold animate-fade-in" 
+                    className="btn btn-success text-white px-4 py-2.5 fw-bold animate-fade-in" 
                     style={{ borderRadius: '10px' }}
                   >
                     저장
                   </button>
                 )}
-                <button type="submit" className={`btn w-100 ${editingMemoId ? 'btn-warning text-dark fw-bold' : 'btn-premium-primary'}`} style={{ borderRadius: '10px' }}>
+                <button type="submit" className={`btn w-100 py-2.5 fw-bold ${editingMemoId ? 'btn-warning text-dark' : 'btn-premium-primary'}`} style={{ borderRadius: '10px' }}>
                   {editingMemoId ? '수정 완료' : '메모 등록'}
                 </button>
-                <button type="button" onClick={handleCancelMemoEdit} className="btn btn-outline-secondary px-3" style={{ borderRadius: '10px' }}>
+                <button type="button" onClick={handleCancelMemoEdit} className="btn btn-outline-secondary px-4 py-2.5" style={{ borderRadius: '10px' }}>
                   취소
                 </button>
               </div>

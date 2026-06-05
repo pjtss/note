@@ -10,6 +10,7 @@ export interface Schedule {
   category: ScheduleCategory;
   isCompleted: boolean;
   createdAt?: string; // ISO 8601 string
+  hasTime: boolean;
 }
 
 export interface CreateScheduleInput {
@@ -19,6 +20,7 @@ export interface CreateScheduleInput {
   endTime: string;
   category: ScheduleCategory;
   userId?: string;
+  hasTime?: boolean;
 }
 
 export interface UpdateScheduleInput {
@@ -29,4 +31,5 @@ export interface UpdateScheduleInput {
   category?: ScheduleCategory;
   isCompleted?: boolean;
   userId?: string;
+  hasTime?: boolean;
 }

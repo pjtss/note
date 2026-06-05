@@ -35,7 +35,8 @@ describe('useSchedules 커스텀 훅 테스트', () => {
       endTime: '2026-05-19T10:00:00Z',
       category: 'Work',
       isCompleted: false,
-      createdAt: '2026-05-19T00:00:00Z'
+      createdAt: '2026-05-19T00:00:00Z',
+      hasTime: true
     },
     {
       id: 'id-2',
@@ -45,7 +46,8 @@ describe('useSchedules 커스텀 훅 테스트', () => {
       endTime: '2026-05-20T12:00:00Z',
       category: 'Personal',
       isCompleted: true,
-      createdAt: '2026-05-19T00:00:00Z'
+      createdAt: '2026-05-19T00:00:00Z',
+      hasTime: true
     },
     {
       id: 'id-3',
@@ -55,7 +57,8 @@ describe('useSchedules 커스텀 훅 테스트', () => {
       endTime: '2026-05-21T15:30:00Z',
       category: 'Important',
       isCompleted: false,
-      createdAt: '2026-05-19T00:00:00Z'
+      createdAt: '2026-05-19T00:00:00Z',
+      hasTime: true
     }
   ];
 
@@ -135,7 +138,8 @@ describe('useSchedules 커스텀 훅 테스트', () => {
       id: 'id-new',
       ...newInput,
       isCompleted: false,
-      createdAt: '2026-05-19T00:00:00Z'
+      createdAt: '2026-05-19T00:00:00Z',
+      hasTime: true
     };
 
     mockCreateSchedule.mockResolvedValue(mockAdded);
@@ -182,7 +186,8 @@ describe('useSchedules 커스텀 훅 테스트', () => {
     const updatedSchedule: Schedule = {
       ...dummySchedules[1],
       title: '완전 변경된 일정 2',
-      startTime: '2026-05-18T10:00:00Z'
+      startTime: '2026-05-18T10:00:00Z',
+      hasTime: true
     };
 
     mockUpdateSchedule.mockResolvedValue(updatedSchedule);

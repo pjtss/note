@@ -17,6 +17,7 @@ export class PrismaScheduleService {
       category: item.category as ScheduleCategory,
       isCompleted: item.isCompleted,
       createdAt: item.createdAt.toISOString(),
+      hasTime: item.hasTime,
     }));
   }
 
@@ -29,6 +30,7 @@ export class PrismaScheduleService {
         endTime: new Date(input.endTime),
         category: input.category,
         isCompleted: false,
+        hasTime: input.hasTime ?? true,
       },
     });
     return {
@@ -40,6 +42,7 @@ export class PrismaScheduleService {
       category: item.category as ScheduleCategory,
       isCompleted: item.isCompleted,
       createdAt: item.createdAt.toISOString(),
+      hasTime: item.hasTime,
     };
   }
 
@@ -51,6 +54,7 @@ export class PrismaScheduleService {
     if (input.endTime !== undefined) updateData.endTime = new Date(input.endTime);
     if (input.category !== undefined) updateData.category = input.category;
     if (input.isCompleted !== undefined) updateData.isCompleted = input.isCompleted;
+    if (input.hasTime !== undefined) updateData.hasTime = input.hasTime;
 
     const item = await prisma.schedule.update({
       where: { id },
@@ -66,6 +70,7 @@ export class PrismaScheduleService {
       category: item.category as ScheduleCategory,
       isCompleted: item.isCompleted,
       createdAt: item.createdAt.toISOString(),
+      hasTime: item.hasTime,
     };
   }
 

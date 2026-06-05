@@ -30,7 +30,8 @@ export class LocalStorageScheduleService implements IScheduleService {
           endTime: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(),
           category: 'Work',
           isCompleted: true,
-          createdAt: new Date().toISOString()
+          createdAt: new Date().toISOString(),
+          hasTime: true
         },
         {
           id: 'demo-2',
@@ -40,7 +41,8 @@ export class LocalStorageScheduleService implements IScheduleService {
           endTime: new Date(Date.now() + 26 * 60 * 60 * 1000).toISOString(),
           category: 'Personal',
           isCompleted: false,
-          createdAt: new Date().toISOString()
+          createdAt: new Date().toISOString(),
+          hasTime: true
         },
         {
           id: 'demo-3',
@@ -50,7 +52,8 @@ export class LocalStorageScheduleService implements IScheduleService {
           endTime: new Date(Date.now() + 50 * 60 * 60 * 1000).toISOString(),
           category: 'Important',
           isCompleted: false,
-          createdAt: new Date().toISOString()
+          createdAt: new Date().toISOString(),
+          hasTime: true
         }
       ];
       localStorage.setItem(this.STORAGE_KEY, JSON.stringify(demoData));
@@ -83,7 +86,8 @@ export class LocalStorageScheduleService implements IScheduleService {
       endTime: input.endTime,
       category: input.category,
       isCompleted: false,
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
+      hasTime: input.hasTime ?? true
     };
     schedules.push(newSchedule);
     this.saveRawSchedules(schedules);
@@ -128,7 +132,8 @@ export class SupabaseScheduleService implements IScheduleService {
       endTime: item.endTime,
       category: item.category,
       isCompleted: item.isCompleted,
-      createdAt: item.createdAt
+      createdAt: item.createdAt,
+      hasTime: item.hasTime ?? true
     }));
   }
 
@@ -144,7 +149,8 @@ export class SupabaseScheduleService implements IScheduleService {
           startTime: input.startTime,
           endTime: input.endTime,
           category: input.category,
-          isCompleted: false
+          isCompleted: false,
+          hasTime: input.hasTime ?? true
         }
       ])
       .select()
@@ -160,7 +166,8 @@ export class SupabaseScheduleService implements IScheduleService {
       endTime: data.endTime,
       category: data.category,
       isCompleted: data.isCompleted,
-      createdAt: data.createdAt
+      createdAt: data.createdAt,
+      hasTime: data.hasTime
     };
   }
 
@@ -182,7 +189,8 @@ export class SupabaseScheduleService implements IScheduleService {
       endTime: data.endTime,
       category: data.category,
       isCompleted: data.isCompleted,
-      createdAt: data.createdAt
+      createdAt: data.createdAt,
+      hasTime: data.hasTime
     };
   }
 

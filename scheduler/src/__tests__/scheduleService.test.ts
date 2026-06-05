@@ -103,7 +103,8 @@ describe('ScheduleService 테스트', () => {
           startTime: new Date().toISOString(),
           endTime: new Date().toISOString(),
           category: 'Work',
-          isCompleted: false
+          isCompleted: false,
+          hasTime: true
         }
       ];
       localStorage.setItem('scheduler_schedules', JSON.stringify(mockData));
@@ -178,11 +179,16 @@ describe('ScheduleService 테스트', () => {
     });
 
     test('getSchedules - 성공 시 데이터가 그대로 반환되어야 함', async () => {
-      const mockData = [{ id: '1', title: '일정 1', description: '', startTime: '...', endTime: '...', category: 'Work', isCompleted: false, createdAt: '...' }];
+      const mockData = [
+        { id: '1', title: '일정 1', description: '', startTime: '...', endTime: '...', category: 'Work', isCompleted: false, createdAt: '...', hasTime: true },
+        { id: '2', title: '일정 2', description: '', startTime: '...', endTime: '...', category: 'Work', isCompleted: false, createdAt: '...' }
+      ];
       mockOrder.mockResolvedValue({ data: mockData, error: null });
 
       const res = await service.getSchedules();
-      expect(res).toEqual(mockData);
+      expect(res.length).toBe(2);
+      expect(res[0].hasTime).toBe(true);
+      expect(res[1].hasTime).toBe(true);
     });
 
     test('getSchedules - data가 null일 시 빈 배열을 반환해야 함 (Branch 100%용)', async () => {
@@ -198,11 +204,20 @@ describe('ScheduleService 테스트', () => {
 
     test('createSchedule - 성공 시 생성된 일정을 반환해야 함', async () => {
       const input: CreateScheduleInput = { title: '생성', description: '', startTime: '...', endTime: '...', category: 'Work' };
-      const mockResult = { id: 'new-id', ...input, isCompleted: false, createdAt: '...' };
+      const mockResult = { id: 'new-id', ...input, isCompleted: false, createdAt: '...', hasTime: true };
       mockSingle.mockResolvedValue({ data: mockResult, error: null });
 
       const res = await service.createSchedule(input);
       expect(res).toEqual(mockResult);
+    });
+
+    test('createSchedule - hasTime이 명시적으로 false로 주어졌을 때 정상 반영되어야 함', async () => {
+      const input: CreateScheduleInput = { title: '생성', description: '', startTime: '...', endTime: '...', category: 'Work', hasTime: false };
+      const mockResult = { id: 'new-id', ...input, isCompleted: false, createdAt: '...', hasTime: false };
+      mockSingle.mockResolvedValue({ data: mockResult, error: null });
+
+      const res = await service.createSchedule(input);
+      expect(res.hasTime).toBe(false);
     });
 
     test('createSchedule - 실패 시 에러가 throw 되어야 함', async () => {
@@ -211,8 +226,8 @@ describe('ScheduleService 테스트', () => {
     });
 
     test('updateSchedule - 성공 시 업데이트된 일정을 반환해야 함', async () => {
-      const input: UpdateScheduleInput = { title: '수정', description: '' };
-      const mockResult = { id: 'id-1', title: '수정', description: '', startTime: '...', endTime: '...', category: 'Work', isCompleted: false, createdAt: '...' };
+      const input: UpdateScheduleInput = { title: '수정', description: '', hasTime: true };
+      const mockResult = { id: 'id-1', title: '수정', description: '', startTime: '...', endTime: '...', category: 'Work', isCompleted: false, createdAt: '...', hasTime: true };
       mockSingle.mockResolvedValue({ data: mockResult, error: null });
 
       const res = await service.updateSchedule('id-1', input);
