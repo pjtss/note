@@ -62,8 +62,9 @@ export async function POST(request: Request) {
     const profileData = await profileResponse.json();
 
     if (!profileResponse.ok) {
+      const errorMsg = profileData.msg || JSON.stringify(profileData);
       return NextResponse.json(
-        { error: '카카오 프로필 정보를 가져오는 데 실패했습니다.' },
+        { error: `카카오 프로필 정보를 가져오는 데 실패했습니다. (카카오 응답: ${errorMsg})` },
         { status: profileResponse.status }
       );
     }
