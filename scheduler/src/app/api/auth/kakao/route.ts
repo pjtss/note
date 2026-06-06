@@ -136,8 +136,10 @@ export async function POST(request: Request) {
       }
     });
   } catch (err: any) {
+    console.error('카카오 로그인 상세 에러:', err);
+    const detail = err.cause ? ` (원인: ${err.cause.message || JSON.stringify(err.cause)})` : '';
     return NextResponse.json(
-      { error: err.message || '카카오 로그인 처리 중 서버 내부 에러가 발생했습니다.' },
+      { error: `카카오 로그인 처리 중 서버 에러가 발생했습니다. 에러: ${err.message}${detail}` },
       { status: 500 }
     );
   }
