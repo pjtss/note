@@ -22,7 +22,7 @@ function KakaoCallbackContent() {
 
     const processLogin = async () => {
       try {
-        const redirectUri = `${window.location.origin}/auth/kakao/callback`;
+        const redirectUri = `${window.location.origin}/oauth/kakao/callback`;
         await getAuthService().handleKakaoCallback(code, redirectUri, rememberMe);
         router.push('/');
       } catch (err: any) {

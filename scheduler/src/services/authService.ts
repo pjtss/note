@@ -199,7 +199,7 @@ export class JwtAuthService implements IAuthService {
         throw new Error('카카오 클라이언트 ID(NEXT_PUBLIC_KAKAO_CLIENT_ID) 설정이 존재하지 않습니다.');
       }
       
-      const redirectUri = `${window.location.origin}/auth/kakao/callback`;
+      const redirectUri = `${window.location.origin}/oauth/kakao/callback`;
       const state = rememberMe ? 'remember' : 'session';
       const authorizationUrl = `https://kauth.kakao.com/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&state=${state}`;
       
