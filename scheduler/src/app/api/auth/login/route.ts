@@ -20,7 +20,7 @@ export async function POST(request: Request) {
       where: { username }
     });
 
-    if (!user || user.password !== hashPassword(password)) {
+    if (!user || user.deletedAt !== null || user.password !== hashPassword(password)) {
       return NextResponse.json(
         { error: '아이디 또는 비밀번호가 올바르지 않습니다.' },
         { status: 401 }
@@ -31,7 +31,7 @@ export async function POST(request: Request) {
     const payload = {
       userId: user.id,
       username: user.username,
-      displayName: user.displayName,
+      displayName: user.displayName || '',
       provider: user.provider,
       pushEnabled: user.pushEnabled
     };
@@ -55,7 +55,7 @@ export async function POST(request: Request) {
       user: {
         id: user.id,
         username: user.username,
-        displayName: user.displayName,
+        displayName: user.displayName || '',
         provider: user.provider,
         createdAt: user.createdAt,
         pushEnabled: user.pushEnabled

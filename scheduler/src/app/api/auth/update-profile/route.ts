@@ -38,9 +38,9 @@ export async function POST(request: Request) {
       where: { id: decoded.userId }
     });
 
-    if (!user) {
+    if (!user || user.deletedAt !== null) {
       return NextResponse.json(
-        { error: '존재하지 않는 사용자입니다.' },
+        { error: '존재하지 않거나 탈퇴한 사용자입니다.' },
         { status: 404 }
       );
     }
@@ -96,7 +96,7 @@ export async function POST(request: Request) {
     const payload = {
       userId: user.id,
       username: user.username,
-      displayName: user.displayName,
+      displayName: user.displayName || '',
       provider: user.provider,
       pushEnabled: user.pushEnabled
     };
@@ -120,7 +120,7 @@ export async function POST(request: Request) {
       user: {
         id: user.id,
         username: user.username,
-        displayName: user.displayName,
+        displayName: user.displayName || '',
         email: user.email,
         provider: user.provider,
         createdAt: user.createdAt,

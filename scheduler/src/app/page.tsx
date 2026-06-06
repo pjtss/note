@@ -252,8 +252,8 @@ export default function Home() {
             const timeStr = schedule.hasTime ? schedule.startTime.replace('T', ' ').slice(0, 16) : '하루 종일';
             registration.showNotification(`${importanceEmoji}Antigravity 스케줄 알림`, {
               body: `"${schedule.title}" 일정이 지금 시작되었습니다!\n⏰ 시간: ${timeStr}`,
-              icon: '/next.svg',
-              badge: '/next.svg',
+              icon: '/logo.png',
+              badge: '/logo.png',
               vibrate: [200, 100, 200],
               tag: `sched-${schedule.id}`,
               renotify: true,
@@ -340,8 +340,8 @@ export default function Home() {
         navigator.serviceWorker.ready.then((registration) => {
           registration.showNotification(`🍅 뽀모도로 타이머 - ${pomodoroMode === 'focus' ? '집중 완료!' : '휴식 완료!'}`, {
             body: bodyText,
-            icon: '/next.svg',
-            badge: '/next.svg',
+            icon: '/logo.png',
+            badge: '/logo.png',
             tag: 'pomodoro-alert',
             renotify: true
           } as any);
@@ -1065,8 +1065,8 @@ ${memo.content}`;
       <nav className="navbar navbar-expand-lg glass-nav py-3 sticky-top">
         <div className="container">
           <div className="d-flex align-items-center">
-            <div className="text-white rounded-3 p-2 me-3 d-flex align-items-center justify-content-center" style={{ width: '40px', height: '40px', background: 'var(--primary-gradient)', boxShadow: '0 0 12px var(--neon-pink)' }}>
-              <i className="bi bi-journal-check fs-4"></i>
+            <div className="rounded-3 p-1.5 me-3 d-flex align-items-center justify-content-center" style={{ width: '40px', height: '40px', background: 'rgba(255, 255, 255, 0.08)', border: '1px solid rgba(236, 72, 153, 0.3)', boxShadow: '0 0 12px var(--neon-pink)' }}>
+              <img src="/logo.png" alt="Simple Note Logo" style={{ width: '100%', height: '100%', objectFit: 'contain', borderRadius: '4px' }} />
             </div>
             <div>
               <span className="navbar-brand mb-0 h4 fw-bold display-font neon-text-pink" style={{ letterSpacing: '0.5px' }}>Antigravity Note</span>
@@ -1183,8 +1183,8 @@ ${memo.content}`;
                 }}
               >
                 <div className="text-center mb-4">
-                  <div className="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center p-3 mb-3 shadow-sm" style={{ width: '56px', height: '56px', background: 'var(--primary-gradient)' }}>
-                    <i className="bi bi-shield-lock-fill fs-3"></i>
+                  <div className="rounded-circle d-inline-flex align-items-center justify-content-center p-2 mb-3 shadow-sm" style={{ width: '56px', height: '56px', background: 'rgba(255, 255, 255, 0.08)', border: '1px solid rgba(99, 102, 241, 0.3)', boxShadow: '0 0 15px rgba(99, 102, 241, 0.3)' }}>
+                    <img src="/logo.png" alt="Simple Note Logo" style={{ width: '100%', height: '100%', objectFit: 'contain', borderRadius: '50%' }} />
                   </div>
                   <h4 className="fw-bold mb-1 display-font text-white">Antigravity Portal</h4>
                   <p className="text-secondary small">프리미엄 일정 & 메모패드 연동 계정 인증</p>

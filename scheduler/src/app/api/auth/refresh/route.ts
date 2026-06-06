@@ -42,9 +42,9 @@ export async function POST(request: Request) {
       where: { id: payload.userId }
     });
 
-    if (!user) {
+    if (!user || user.deletedAt !== null) {
       return NextResponse.json(
-        { error: '존재하지 않는 사용자입니다.' },
+        { error: '존재하지 않거나 탈퇴한 사용자입니다.' },
         { status: 401 }
       );
     }
@@ -53,7 +53,7 @@ export async function POST(request: Request) {
     const tokenPayload = {
       userId: user.id,
       username: user.username,
-      displayName: user.displayName,
+      displayName: user.displayName || '',
       provider: user.provider,
       pushEnabled: user.pushEnabled
     };
@@ -81,7 +81,7 @@ export async function POST(request: Request) {
       user: {
         userId: user.id,
         username: user.username,
-        displayName: user.displayName,
+        displayName: user.displayName || '',
         provider: user.provider,
         pushEnabled: user.pushEnabled
       }

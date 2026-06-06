@@ -85,7 +85,7 @@ export async function POST(request: Request) {
       }
     }
 
-    // 3. 사용자가 작성한 모든 하위 리소스 DB에서 완전 삭제 (Cascade 수동 처리)
+    // 3. 사용자가 작성한 모든 하위 리소스 DB에서 완전 삭제 (Cascade 수동 처리) 및 유저 개인정보 파기(Soft Delete)
     await prisma.$transaction([
       prisma.schedule.deleteMany({
         where: { userId: user.id }
@@ -96,8 +96,20 @@ export async function POST(request: Request) {
       prisma.refreshToken.deleteMany({
         where: { userId: user.id }
       }),
-      prisma.user.delete({
-        where: { id: user.id }
+      prisma.user.update({
+        where: { id: user.id },
+        data: {
+          username: `deleted_user_${Date.now()}_${user.id}`,
+          email: null,
+          password: null,
+          displayName: null,
+          kakaoId: null,
+          kakaoRefreshToken: null,
+          pushEnabled: false,
+          deletedAt: new Date(),
+          oauthProvider: user.provider,
+          provider: 'deleted'
+        }
       })
     ]);
 

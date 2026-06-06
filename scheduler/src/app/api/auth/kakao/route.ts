@@ -88,7 +88,8 @@ export async function POST(request: Request) {
           email,
           kakaoId,
           kakaoRefreshToken,
-          provider: 'kakao'
+          provider: 'kakao',
+          oauthProvider: 'kakao'
         }
       });
     } else {
@@ -106,7 +107,7 @@ export async function POST(request: Request) {
     const payload = {
       userId: user.id,
       username: user.username,
-      displayName: user.displayName,
+      displayName: user.displayName || nickname,
       provider: user.provider,
       pushEnabled: user.pushEnabled
     };
@@ -130,7 +131,7 @@ export async function POST(request: Request) {
       user: {
         id: user.id,
         username: user.username,
-        displayName: user.displayName,
+        displayName: user.displayName || nickname,
         email: user.email,
         provider: user.provider,
         createdAt: user.createdAt,

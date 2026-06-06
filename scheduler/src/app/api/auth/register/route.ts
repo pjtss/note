@@ -39,7 +39,8 @@ export async function POST(request: Request) {
         username,
         password: hashedPassword,
         displayName,
-        provider: 'local'
+        provider: 'local',
+        oauthProvider: 'local'
       }
     });
 
@@ -47,7 +48,7 @@ export async function POST(request: Request) {
     const payload = {
       userId: user.id,
       username: user.username,
-      displayName: user.displayName,
+      displayName: user.displayName || '',
       provider: 'local',
       pushEnabled: user.pushEnabled
     };
@@ -71,7 +72,7 @@ export async function POST(request: Request) {
       user: {
         id: user.id,
         username: user.username,
-        displayName: user.displayName,
+        displayName: user.displayName || '',
         provider: user.provider,
         createdAt: user.createdAt,
         pushEnabled: user.pushEnabled
