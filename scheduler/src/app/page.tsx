@@ -9,7 +9,7 @@ import { useAuth } from '../hooks/useAuth';
 import { MarkdownRenderer } from '../components/MarkdownRenderer';
 
 export default function Home() {
-  const [activeTab, setActiveTab] = useState<'schedule' | 'memo'>('schedule');
+  const [activeTab, setActiveTab] = useState<'schedule' | 'memo' | 'profile'>('schedule');
 
   // 1. 유저 인증 상태 & 비즈니스 로직
   const {
@@ -20,8 +20,24 @@ export default function Home() {
     signUpUser,
     signInUser,
     signInSocial,
-    signOutUser
+    signOutUser,
+    updateProfile
   } = useAuth();
+
+  // 프로필 변경 폼 상태
+  const [profileDisplayName, setProfileDisplayName] = useState('');
+  const [profileCurrentPassword, setProfileCurrentPassword] = useState('');
+  const [profileNewPassword, setProfileNewPassword] = useState('');
+  const [profileNewPasswordConfirm, setProfileNewPasswordConfirm] = useState('');
+  const [profileError, setProfileError] = useState<string | null>(null);
+  const [profileSuccess, setProfileSuccess] = useState<string | null>(null);
+
+  // 세션 로드 시 프로필 닉네임 상태 동기화
+  useEffect(() => {
+    if (user) {
+      setProfileDisplayName(user.displayName);
+    }
+  }, [user]);
 
   // 2. 일정 관리 상태 & 비즈니스 로직
   const {
@@ -645,6 +661,58 @@ ${memo.content}`;
   const pendingCount = totalCount - completedCount;
   const importantCount = myRawSchedules.filter(s => s.category === 'Important' && !s.isCompleted).length;
 
+  // 프로필 변경 제출 핸들러
+  const handleProfileSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setProfileError(null);
+    setProfileSuccess(null);
+
+    if (!profileDisplayName.trim()) {
+      setProfileError('닉네임을 입력해 주세요.');
+      return;
+    }
+
+    const isLocal = user?.provider === 'local';
+    let currentPwd = '';
+    let newPwd = '';
+
+    if (isLocal && (profileCurrentPassword || profileNewPassword || profileNewPasswordConfirm)) {
+      if (!profileCurrentPassword) {
+        setProfileError('현재 비밀번호를 입력해야 비밀번호를 변경할 수 있습니다.');
+        return;
+      }
+      if (!profileNewPassword) {
+        setProfileError('새로운 비밀번호를 입력해 주세요.');
+        return;
+      }
+      if (profileNewPassword.length < 4) {
+        setProfileError('비밀번호는 최소 4자 이상이어야 합니다.');
+        return;
+      }
+      if (profileNewPassword !== profileNewPasswordConfirm) {
+        setProfileError('새 비밀번호와 비밀번호 확인이 일치하지 않습니다.');
+        return;
+      }
+      currentPwd = profileCurrentPassword;
+      newPwd = profileNewPassword;
+    }
+
+    try {
+      await updateProfile(
+        profileDisplayName.trim(),
+        currentPwd || undefined,
+        newPwd || undefined
+      );
+      setProfileSuccess('프로필이 성공적으로 수정되었습니다.');
+      setProfileCurrentPassword('');
+      setProfileNewPassword('');
+      setProfileNewPasswordConfirm('');
+      showToast('👤 프로필 수정 성공!');
+    } catch (err: any) {
+      setProfileError(err.message || '프로필 수정 중 오류가 발생했습니다.');
+    }
+  };
+
   // 인증 제출 핸들러 (회원가입 / 로그인 통합)
   const handleAuthSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1014,6 +1082,18 @@ ${memo.content}`;
                 }}
               >
                 <i className="bi bi-sticky-fill me-2"></i>메모패드
+              </button>
+              <button
+                onClick={() => setActiveTab('profile')}
+                className="btn btn-sm px-4 py-2 rounded-pill fw-semibold transition-all border-0"
+                style={{ 
+                  fontSize: '0.9rem',
+                  background: activeTab === 'profile' ? 'var(--primary-gradient)' : 'transparent',
+                  color: activeTab === 'profile' ? '#ffffff' : '#94a3b8',
+                  boxShadow: activeTab === 'profile' ? '0 0 10px rgba(99, 102, 241, 0.4)' : 'none'
+                }}
+              >
+                <i className="bi bi-person-circle me-2"></i>마이페이지
               </button>
             </div>
           )}
@@ -1803,6 +1883,151 @@ ${memo.content}`;
                         })}
                       </div>
                     )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* 3. 마이페이지 (Profile Tab) */}
+            {activeTab === 'profile' && (
+              <div className="row justify-content-center animate-fade-in">
+                <div className="col-lg-8 col-xl-7">
+                  <div 
+                    className="premium-card p-5 position-relative overflow-hidden rounded-4 text-start"
+                    style={{ 
+                      backgroundColor: 'rgba(15, 18, 36, 0.85)',
+                      border: '1px solid rgba(99, 102, 241, 0.25)',
+                      boxShadow: '0 0 30px rgba(99, 102, 241, 0.15), 0 15px 45px rgba(0, 0, 0, 0.65)'
+                    }}
+                  >
+                    {/* 상단 프로필 헤더 */}
+                    <div className="d-flex align-items-center justify-content-between mb-4 pb-3 border-bottom border-secondary" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
+                      <div className="d-flex align-items-center gap-3">
+                        <div 
+                          className="rounded-circle d-flex align-items-center justify-content-center"
+                          style={{
+                            width: '64px',
+                            height: '64px',
+                            background: 'var(--primary-gradient)',
+                            boxShadow: '0 0 15px var(--neon-pink)'
+                          }}
+                        >
+                          <i className="bi bi-person-bounding-box text-white fs-3"></i>
+                        </div>
+                        <div>
+                          <h4 className="fw-bold mb-1 text-white display-font">{user.displayName}</h4>
+                          <span className="text-secondary small d-flex align-items-center gap-1">
+                            {user.provider === 'google' && <i className="bi bi-google text-danger"></i>}
+                            {user.provider === 'kakao' && <i className="bi bi-chat-fill text-warning"></i>}
+                            {user.provider === 'naver' && <i className="bi bi-n-circle-fill text-success"></i>}
+                            {user.provider === 'local' && <i className="bi bi-person-circle text-primary"></i>}
+                            <span className="text-uppercase fw-semibold">{user.provider} Auth Portal</span>
+                          </span>
+                        </div>
+                      </div>
+                      
+                      <button
+                        onClick={signOutUser}
+                        className="btn btn-outline-danger rounded-pill px-4 py-2 fw-semibold"
+                        style={{ fontSize: '0.9rem', border: '1px solid rgba(239, 68, 68, 0.4)' }}
+                      >
+                        <i className="bi bi-box-arrow-right me-1"></i>로그아웃
+                      </button>
+                    </div>
+
+                    {/* 에러 및 성공 메시지 출력 */}
+                    {profileError && (
+                      <div className="alert alert-danger border-0 small rounded-3 d-flex align-items-center gap-2 mb-4 animate-fade-in" style={{ backgroundColor: 'rgba(239, 68, 68, 0.15)', color: '#f87171', border: '1px solid rgba(239, 68, 68, 0.2)' }} role="alert">
+                        <i className="bi bi-exclamation-triangle-fill fs-6"></i>
+                        <div>{profileError}</div>
+                      </div>
+                    )}
+                    {profileSuccess && (
+                      <div className="alert alert-success border-0 small rounded-3 d-flex align-items-center gap-2 mb-4 animate-fade-in" style={{ backgroundColor: 'rgba(16, 185, 129, 0.15)', color: '#34d399', border: '1px solid rgba(16, 185, 129, 0.2)' }} role="alert">
+                        <i className="bi bi-check-circle-fill fs-6"></i>
+                        <div>{profileSuccess}</div>
+                      </div>
+                    )}
+
+                    <form onSubmit={handleProfileSubmit}>
+                      {/* 닉네임 수정 필드 */}
+                      <div className="mb-4">
+                        <label htmlFor="profileDisplayName" className="form-label small fw-semibold text-secondary">이름 / 닉네임 변경 *</label>
+                        <input
+                          type="text"
+                          id="profileDisplayName"
+                          className="form-control form-premium-control text-white"
+                          value={profileDisplayName}
+                          onChange={(e) => setProfileDisplayName(e.target.value)}
+                          placeholder="새로운 닉네임을 입력하세요"
+                          required
+                        />
+                      </div>
+
+                      {/* 이메일 주소 정보 (읽기 전용) */}
+                      <div className="mb-4">
+                        <label className="form-label small fw-semibold text-secondary">계정 아이디 (이메일 주소)</label>
+                        <input
+                          type="text"
+                          className="form-control form-premium-control text-secondary bg-transparent"
+                          value={user.username}
+                          disabled
+                          style={{ opacity: 0.6 }}
+                        />
+                      </div>
+
+                      {/* 비밀번호 변경 필드 (Local 유저 한정 노출) */}
+                      {user.provider === 'local' && (
+                        <div className="p-4 rounded-4 mb-4 border" style={{ backgroundColor: 'rgba(255, 255, 255, 0.02)', borderColor: 'rgba(255, 255, 255, 0.05)' }}>
+                          <h6 className="fw-bold text-white mb-3 d-flex align-items-center gap-2">
+                            <i className="bi bi-shield-lock-fill text-warning"></i>
+                            비밀번호 변경하기
+                          </h6>
+                          <div className="row g-3">
+                            <div className="col-12">
+                              <label htmlFor="profileCurrentPassword" className="form-label small fw-semibold text-secondary">현재 비밀번호 *</label>
+                              <input
+                                type="password"
+                                id="profileCurrentPassword"
+                                className="form-control form-premium-control text-white"
+                                value={profileCurrentPassword}
+                                onChange={(e) => setProfileCurrentPassword(e.target.value)}
+                                placeholder="현재 비밀번호를 입력해 주세요"
+                              />
+                            </div>
+                            <div className="col-md-6">
+                              <label htmlFor="profileNewPassword" className="form-label small fw-semibold text-secondary">새 비밀번호</label>
+                              <input
+                                type="password"
+                                id="profileNewPassword"
+                                className="form-control form-premium-control text-white"
+                                value={profileNewPassword}
+                                onChange={(e) => setProfileNewPassword(e.target.value)}
+                                placeholder="최소 4자 이상"
+                              />
+                            </div>
+                            <div className="col-md-6">
+                              <label htmlFor="profileNewPasswordConfirm" className="form-label small fw-semibold text-secondary">새 비밀번호 확인</label>
+                              <input
+                                type="password"
+                                id="profileNewPasswordConfirm"
+                                className="form-control form-premium-control text-white"
+                                value={profileNewPasswordConfirm}
+                                onChange={(e) => setProfileNewPasswordConfirm(e.target.value)}
+                                placeholder="동일하게 입력"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      <button
+                        type="submit"
+                        className="btn btn-premium-primary w-100 py-3 rounded-pill fw-bold shadow-sm transition-all mt-2"
+                      >
+                        <i className="bi bi-check-circle-fill me-2"></i>변경 사항 저장하기
+                      </button>
+                    </form>
                   </div>
                 </div>
               </div>

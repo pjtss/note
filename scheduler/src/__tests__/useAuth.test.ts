@@ -9,6 +9,7 @@ jest.mock('../services/authService', () => {
   const mockLogin = jest.fn();
   const mockSocialLogin = jest.fn();
   const mockLogout = jest.fn();
+  const mockUpdateProfile = jest.fn();
 
   return {
     getAuthService: () => ({
@@ -16,7 +17,8 @@ jest.mock('../services/authService', () => {
       register: mockRegister,
       login: mockLogin,
       socialLogin: mockSocialLogin,
-      logout: mockLogout
+      logout: mockLogout,
+      updateProfile: mockUpdateProfile
     })
   };
 });
@@ -28,6 +30,7 @@ describe('useAuth 커스텀 훅 테스트', () => {
   const mockLogin = mockService.login as jest.Mock;
   const mockSocialLogin = mockService.socialLogin as jest.Mock;
   const mockLogout = mockService.logout as jest.Mock;
+  const mockUpdateProfile = (mockService as any).updateProfile as jest.Mock;
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -232,4 +235,47 @@ describe('useAuth 커스텀 훅 테스트', () => {
 
     expect(result.current.authError).toBe('Logout Failed');
   });
+
+  test('updateProfile - 성공 시 프로필을 수정하고 세션을 갱신해야 함', async () => {
+    const mockSession = { id: 'u-1', username: 'test@test.com', displayName: '홍길동', provider: 'local', createdAt: '2026-05-20' };
+    mockGetCurrentSession.mockResolvedValue(mockSession);
+
+    const { result } = renderHook(() => useAuth());
+
+    await act(async () => {
+      await new Promise(resolve => setTimeout(resolve, 0));
+    });
+
+    const updatedSession = { ...mockSession, displayName: '새이름' };
+    mockUpdateProfile.mockResolvedValue(updatedSession);
+
+    let res;
+    await act(async () => {
+      res = await result.current.updateProfile('새이름');
+    });
+
+    expect(res).toEqual(updatedSession);
+    expect(result.current.user).toEqual(updatedSession);
+  });
+
+  test('updateProfile - 실패 시 에러를 throw 하고 authError 상태를 갱신해야 함', async () => {
+    const mockSession = { id: 'u-1', username: 'test@test.com', displayName: '홍길동', provider: 'local', createdAt: '2026-05-20' };
+    mockGetCurrentSession.mockResolvedValue(mockSession);
+
+    const { result } = renderHook(() => useAuth());
+
+    await act(async () => {
+      await new Promise(resolve => setTimeout(resolve, 0));
+    });
+
+    mockUpdateProfile.mockRejectedValue(new Error('Update Failed'));
+
+    await act(async () => {
+      await expect(result.current.updateProfile('새이름'))
+        .rejects.toThrow('Update Failed');
+    });
+
+    expect(result.current.authError).toBe('Update Failed');
+  });
 });
+

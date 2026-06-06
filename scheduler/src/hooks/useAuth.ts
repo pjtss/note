@@ -95,6 +95,22 @@ export function useAuth() {
     }
   }, [getService]);
 
+  const updateProfile = useCallback(async (displayName: string, currentPassword?: string, newPassword?: string) => {
+    setLoading(true);
+    setAuthError(null);
+    try {
+      const activeService = getService();
+      const session = await activeService.updateProfile(displayName, currentPassword, newPassword);
+      setUser(session);
+      return session;
+    } catch (err: any) {
+      setAuthError(err.message || '프로필 수정 도중 장해가 발생했습니다.');
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, [getService]);
+
   useEffect(() => {
     fetchSession();
   }, [fetchSession]);
@@ -108,6 +124,8 @@ export function useAuth() {
     signInUser,
     signInSocial,
     signOutUser,
+    updateProfile,
     fetchSession
   };
 }
+

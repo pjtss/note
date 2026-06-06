@@ -7,6 +7,7 @@ export interface IAuthService {
   login(input: LoginInput, rememberMe?: boolean): Promise<UserSession>;
   socialLogin(provider: SocialProvider, rememberMe?: boolean): Promise<UserSession>;
   handleKakaoCallback(code: string, redirectUri: string, rememberMe: boolean): Promise<UserSession>;
+  updateProfile(displayName: string, currentPassword?: string, newPassword?: string): Promise<UserSession>;
   logout(): Promise<void>;
   getAccessToken(): string | null;
 }
@@ -277,6 +278,39 @@ export class JwtAuthService implements IAuthService {
 
     this.saveTokens(data.accessToken, data.refreshToken, userSession, rememberMe);
     return userSession;
+  }
+
+  async updateProfile(displayName: string, currentPassword?: string, newPassword?: string): Promise<UserSession> {
+    const token = this.getAccessToken();
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const res = await fetch('/api/auth/update-profile', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ displayName, currentPassword, newPassword })
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.error || '프로필 변경에 실패했습니다.');
+    }
+
+    const newUserSession: UserSession = {
+      id: data.user.id,
+      username: data.user.username,
+      displayName: data.user.displayName,
+      email: data.user.email,
+      provider: data.user.provider,
+      createdAt: data.user.createdAt
+    };
+
+    const isLocal = isBrowser.check() && !!localStorage.getItem(this.REFRESH_TOKEN_KEY);
+    this.saveTokens(data.accessToken, data.refreshToken, newUserSession, isLocal);
+
+    return newUserSession;
   }
 
   async logout(): Promise<void> {
