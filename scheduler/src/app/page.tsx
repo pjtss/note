@@ -1257,11 +1257,11 @@ ${memo.content}`;
                         <i className="bi bi-robot fs-5"></i>
                       </div>
                       <div className="flex-grow-1 text-start">
-                        <span className="fw-bold text-dark d-block" style={{ fontSize: '0.9rem' }}>오늘의 AI 스케줄 브리핑</span>
-                        <small className="text-secondary" style={{ fontSize: '0.8rem' }}>
-                          오늘 진행할 일정이 총 <strong>{briefing.totalToday}건</strong> 있으며, 그 중 <strong>{briefing.completedToday}건</strong>을 완료했습니다. 
+                        <span className="fw-bold text-white d-block" style={{ fontSize: '0.9rem', textShadow: '0 0 5px var(--neon-cyan)' }}>오늘의 AI 스케줄 브리핑</span>
+                        <small style={{ fontSize: '0.8rem', color: '#cbd5e1' }}>
+                          오늘 진행할 일정이 총 <strong className="text-info">{briefing.totalToday}건</strong> 있으며, 그 중 <strong className="text-success">{briefing.completedToday}건</strong>을 완료했습니다. 
                           {briefing.importantToday > 0 ? (
-                            <span> 미완료된 중요 일정 <strong>{briefing.importantToday}건</strong>이 있으니 잊지 마세요! 🚨</span>
+                            <span> 미완료된 중요 일정 <strong className="text-danger">{briefing.importantToday}건</strong>이 있으니 잊지 마세요! 🚨</span>
                           ) : (
                             <span> 오늘 남은 과제들을 차근차근 해결해 나가 보세요. 👍</span>
                           )}
@@ -1536,18 +1536,18 @@ ${memo.content}`;
                                       )}
                                     </div>
 
-                                    <h6 className={`fw-bold mb-1 ${schedule.isCompleted ? 'completed-text text-muted' : 'text-dark'}`} style={{ fontSize: '1.05rem' }}>
+                                    <h6 className={`fw-bold mb-1 ${schedule.isCompleted ? 'completed-text' : ''}`} style={{ fontSize: '1.05rem', color: schedule.isCompleted ? '#94a3b8' : '#ffffff' }}>
                                       {renderHighlightedText(schedule.title, searchQuery)}
                                     </h6>
 
                                     {schedule.description && (
-                                      <p className={`small mb-2 ${schedule.isCompleted ? 'text-muted' : 'text-secondary'}`} style={{ whiteSpace: 'pre-line', fontSize: '0.85rem' }}>
+                                      <p className="small mb-2" style={{ whiteSpace: 'pre-line', fontSize: '0.85rem', color: schedule.isCompleted ? '#64748b' : '#cbd5e1' }}>
                                         {renderHighlightedText(schedule.description, searchQuery)}
                                       </p>
                                     )}
 
                                     {/* Date Time Container */}
-                                    <div className="d-flex align-items-center gap-3 text-muted small" style={{ fontSize: '0.75rem' }}>
+                                    <div className="d-flex align-items-center gap-3 small" style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
                                       <span className="d-flex align-items-center gap-1">
                                         <i className="bi bi-calendar-event"></i>
                                         {formatDateKST(schedule.startTime, schedule.hasTime)}
@@ -1564,7 +1564,15 @@ ${memo.content}`;
                                   <div className="d-flex gap-1 align-self-start">
                                     <button 
                                       onClick={() => downloadScheduleIcs(schedule)} 
-                                      className="btn btn-sm btn-light border text-primary rounded-3"
+                                      className="btn btn-sm rounded-3 transition-all d-flex align-items-center justify-content-center"
+                                      style={{
+                                        backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                                        border: '1px solid rgba(0, 240, 255, 0.25)',
+                                        color: 'var(--neon-cyan)',
+                                        boxShadow: '0 0 5px rgba(0, 240, 255, 0.1)',
+                                        width: '32px',
+                                        height: '32px'
+                                      }}
                                       title="캘린더 내보내기 (iCal .ics 파일)"
                                     >
                                       <i className="bi bi-calendar-event"></i>
@@ -1572,7 +1580,14 @@ ${memo.content}`;
                                     {!schedule.isCompleted && (
                                       <button 
                                         onClick={() => handleStartEdit(schedule)} 
-                                        className="btn btn-sm btn-light border text-secondary rounded-3"
+                                        className="btn btn-sm rounded-3 transition-all d-flex align-items-center justify-content-center"
+                                        style={{
+                                          backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                                          border: '1px solid rgba(255, 255, 255, 0.15)',
+                                          color: '#e2e8f0',
+                                          width: '32px',
+                                          height: '32px'
+                                        }}
                                         title="일정 편집"
                                       >
                                         <i className="bi bi-pencil"></i>
@@ -1580,7 +1595,15 @@ ${memo.content}`;
                                     )}
                                     <button 
                                       onClick={() => setDeleteConfirmTarget({ type: 'schedule', id: schedule.id })} 
-                                      className="btn btn-sm btn-light border text-danger rounded-3"
+                                      className="btn btn-sm rounded-3 transition-all d-flex align-items-center justify-content-center"
+                                      style={{
+                                        backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                                        border: '1px solid rgba(255, 0, 127, 0.25)',
+                                        color: 'var(--neon-pink)',
+                                        boxShadow: '0 0 5px rgba(255, 0, 127, 0.1)',
+                                        width: '32px',
+                                        height: '32px'
+                                      }}
                                       title="일정 삭제"
                                     >
                                       <i className="bi bi-trash"></i>

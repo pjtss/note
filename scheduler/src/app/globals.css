@@ -143,7 +143,7 @@ h1, h2, h3, h4, h5, h6, .display-font {
 /* Completed Schedule Line-through Styling */
 .completed-text {
   text-decoration: line-through;
-  color: #475569;
+  color: #94a3b8;
   opacity: 0.5;
 }
 
