@@ -98,6 +98,8 @@ export default function Home() {
   const [memoContent, setMemoContent] = useState('');
   const [memoColor, setMemoColor] = useState('#fffbeb'); // 기본 파스텔 코지옐로우
   const [editingMemoId, setEditingMemoId] = useState<string | null>(null);
+  const [slashSuggestions, setSlashSuggestions] = useState<Array<{ label: string; insert: string }>>([]);
+  const [selectedSlashSuggestionIndex, setSelectedSlashSuggestionIndex] = useState(0);
   
   // 메모 검색 및 필터 상태
   const [memoSearchQuery, setMemoSearchQuery] = useState('');
@@ -153,6 +155,40 @@ export default function Home() {
   const checkIfDarkColor = (colorHex: string) => {
     const darkColors = ['#0077b6', '#1d3557', '#2b2d42', '#118ab2', '#4ea8de'];
     return darkColors.includes(colorHex);
+  };
+
+  const slashCommands = [
+    { label: '/checkbox', insert: '- [ ] ' },
+    { label: '/check', insert: '- [ ] ' },
+    { label: '/h1', insert: '# ' },
+    { label: '/h2', insert: '## ' },
+    { label: '/h3', insert: '### ' },
+    { label: '/hr', insert: '---\n' },
+    { label: '/quote', insert: '> ' },
+    { label: '/bullet', insert: '- ' },
+    { label: '/number', insert: '1. ' }
+  ];
+
+  const updateSlashSuggestions = (value: string, cursorPos: number) => {
+    const textBeforeCursor = value.slice(0, cursorPos);
+    const slashIndex = textBeforeCursor.lastIndexOf('/');
+    if (slashIndex < 0) {
+      setSlashSuggestions([]);
+      return;
+    }
+
+    const query = textBeforeCursor.slice(slashIndex + 1);
+    if (query.includes(' ') || query.includes('\n')) {
+      setSlashSuggestions([]);
+      return;
+    }
+
+    const matches = slashCommands.filter((command) =>
+      command.label.slice(1).toLowerCase().startsWith(query.toLowerCase())
+    );
+
+    setSlashSuggestions(matches);
+    setSelectedSlashSuggestionIndex(0);
   };
 
   // 헥사 색상 코드를 알파 채널이 조절된 rgba로 변환해주는 헬퍼 (네온 글로우 아우라 구현용)
@@ -973,11 +1009,40 @@ ${memo.content}`;
     setMemoTitle('');
     setMemoContent('');
     setMemoColor('#fffbeb');
+    setSlashSuggestions([]);
     setIsMemoModalOpen(false);
   };
 
   // 메모 에디터 내 슬래시 커맨드 (/checkbox) 감지 및 자동 치환
   const handleMemoContentKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (slashSuggestions.length > 0) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setSelectedSlashSuggestionIndex((prev) => (prev + 1) % slashSuggestions.length);
+        return;
+      }
+
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setSelectedSlashSuggestionIndex((prev) => (prev - 1 + slashSuggestions.length) % slashSuggestions.length);
+        return;
+      }
+
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        setSlashSuggestions([]);
+        return;
+      }
+
+      if (e.key === 'Enter' || e.key === 'Tab') {
+        e.preventDefault();
+        const selected = slashSuggestions[selectedSlashSuggestionIndex];
+        if (!selected) return;
+        insertSlashCommand(selected.insert);
+        return;
+      }
+    }
+
     if (e.key === ' ' || e.key === 'Enter') {
       const textarea = e.currentTarget;
       const value = textarea.value;
@@ -1001,6 +1066,32 @@ ${memo.content}`;
         }, 0);
       }
     }
+  };
+
+  const insertSlashCommand = (insertText: string) => {
+    const textarea = document.getElementById('memoContent') as HTMLTextAreaElement | null;
+    if (!textarea) return;
+
+    const value = textarea.value;
+    const selectionStart = textarea.selectionStart ?? value.length;
+    const selectionEnd = textarea.selectionEnd ?? selectionStart;
+    const textBeforeCursor = value.slice(0, selectionStart);
+    const slashIndex = textBeforeCursor.lastIndexOf('/');
+    if (slashIndex < 0) return;
+
+    const nextValue = value.slice(0, slashIndex) + insertText + value.slice(selectionEnd);
+    setMemoContent(nextValue);
+    setSlashSuggestions([]);
+
+    setTimeout(() => {
+      textarea.focus();
+      textarea.setSelectionRange(slashIndex + insertText.length, slashIndex + insertText.length);
+    }, 0);
+  };
+
+  const handleMemoContentChange = (value: string, cursorPos: number) => {
+    setMemoContent(value);
+    updateSlashSuggestions(value, cursorPos);
   };
 
   // 삭제 처리 핸들러
@@ -2588,7 +2679,21 @@ ${memo.content}`;
               </button>
             </div>
 
-            <form onSubmit={handleSubmit}>
+                      <p className="small text-muted mb-3">일정 등록과 수정은 큰 모달에서 처리되어, 목록 공간을 더 넓게 사용할 수 있습니다.</p>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          handleCancelEdit();
+                          setIsScheduleModalOpen(true);
+                        }}
+                        className="btn btn-premium-primary w-100 d-flex align-items-center justify-content-center gap-2"
+                        style={{ borderRadius: '10px' }}
+                      >
+                        <i className="bi bi-plus-circle-fill"></i>
+                        새 일정 등록
+                      </button>
+
+                      <form onSubmit={handleSubmit} className="d-none">
               <div className="mb-3 text-start">
                 <label htmlFor="title" className="form-label small fw-semibold text-muted">일정 제목 *</label>
                 <input
@@ -2852,14 +2957,14 @@ ${memo.content}`;
                 />
               </div>
 
-              <div className="mb-3 text-start d-flex flex-column flex-grow-1">
+              <div className="mb-3 text-start d-flex flex-column flex-grow-1 position-relative">
                 <label htmlFor="memoContent" className="form-label small fw-semibold text-muted">메모 내용 *</label>
                 <textarea
                   id="memoContent"
                   className="form-control form-premium-control flex-grow-1"
                   placeholder="자유롭게 생각을 기록해 보세요... (/checkbox 입력 시 체크박스로 자동 변환)"
                   value={memoContent}
-                  onChange={(e) => setMemoContent(e.target.value)}
+                  onChange={(e) => handleMemoContentChange(e.target.value, e.target.selectionStart ?? e.target.value.length)}
                   onKeyDown={handleMemoContentKeyDown}
                   required
                   style={{ 
@@ -2868,6 +2973,34 @@ ${memo.content}`;
                     minHeight: '45vh'
                   }}
                 />
+                {slashSuggestions.length > 0 && (
+                  <div
+                    className="position-absolute start-0 w-100 rounded-3 shadow-lg border overflow-hidden"
+                    style={{
+                      zIndex: 10,
+                      backgroundColor: 'rgba(11, 13, 26, 0.98)',
+                      borderColor: 'rgba(255,255,255,0.12)',
+                      top: 'calc(100% + 0.5rem)'
+                    }}
+                  >
+                    {slashSuggestions.map((item, index) => (
+                      <button
+                        key={item.label}
+                        type="button"
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => insertSlashCommand(item.insert)}
+                        className="w-100 text-start border-0 px-3 py-2 d-flex align-items-center justify-content-between"
+                        style={{
+                          backgroundColor: index === selectedSlashSuggestionIndex ? 'rgba(99, 102, 241, 0.25)' : 'transparent',
+                          color: '#e2e8f0'
+                        }}
+                      >
+                        <span className="fw-semibold">{item.label}</span>
+                        <span className="small text-muted">{item.insert.trim()}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className="mb-4 text-start">

@@ -130,9 +130,9 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
 
     // 9. 제목 헤더 처리 (### H3, ## H2, # H1)
     const borderUnder = isDarkColor ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.08)';
-    html = html.replace(/^###\s+(.+)$/gm, `<h6 class="fw-bold mt-4 mb-2 display-font text-start" style="font-size: 1.05rem; letter-spacing: -0.2px;">$1</h6>`);
-    html = html.replace(/^##\s+(.+)$/gm, `<h5 class="fw-bold mt-4 mb-2 border-bottom pb-2 text-start display-font" style="font-size: 1.25rem; border-color: ${borderUnder} !important; letter-spacing: -0.3px;">$1</h5>`);
-    html = html.replace(/^#\s+(.+)$/gm, `<h4 class="fw-bold mt-4.5 mb-3 border-bottom pb-2 text-start display-font" style="font-size: 1.45rem; border-color: ${borderUnder} !important; letter-spacing: -0.4px;">$1</h4>`);
+    html = html.replace(/^###\s+(.+)$/gm, `<h6 class="fw-bold mt-2 mb-1 display-font text-start" style="font-size: 1.05rem; letter-spacing: -0.2px; line-height: 1.3;">$1</h6>`);
+    html = html.replace(/^##\s+(.+)$/gm, `<h5 class="fw-bold mt-2 mb-1 border-bottom pb-1 text-start display-font" style="font-size: 1.2rem; border-color: ${borderUnder} !important; letter-spacing: -0.3px; line-height: 1.3;">$1</h5>`);
+    html = html.replace(/^#\s+(.+)$/gm, `<h4 class="fw-bold mt-2 mb-2 border-bottom pb-1 text-start display-font" style="font-size: 1.4rem; border-color: ${borderUnder} !important; letter-spacing: -0.4px; line-height: 1.25;">$1</h4>`);
 
     // 10. 리스트(ul/li, ol/li) 파싱
     const lines = html.split('\n');
@@ -153,7 +153,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
           inOl = false;
         }
         if (!inUl) {
-          processedLines.push('<ul class="my-2 text-start list-unstyled" style="padding-left: 0;">');
+          processedLines.push('<ul class="my-1 text-start list-unstyled" style="padding-left: 0;">');
           inUl = true;
         }
         const isChecked = todoMatch[1].toLowerCase() === 'x';
@@ -162,27 +162,27 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
           : `<i class="bi bi-square text-muted me-2 cursor-pointer todo-toggle" data-line-index="${i}" style="font-size: 1.05rem; vertical-align: middle;"></i>`;
         
         const textStyle = isChecked ? 'text-decoration: line-through; opacity: 0.6;' : '';
-        processedLines.push(`<li class="small my-1.5 d-flex align-items-center" style="line-height: 1.6; ${textStyle}">${checkboxHtml}<span>${todoMatch[2]}</span></li>`);
+        processedLines.push(`<li class="small my-0 py-0 d-flex align-items-center" style="line-height: 1.45; ${textStyle}">${checkboxHtml}<span>${todoMatch[2]}</span></li>`);
       } else if (ulMatch) {
         if (inOl) {
           processedLines.push('</ol>');
           inOl = false;
         }
         if (!inUl) {
-          processedLines.push('<ul class="my-2 text-start" style="padding-left: 1.25rem; list-style-type: disc;">');
+          processedLines.push('<ul class="my-1 text-start" style="padding-left: 1.1rem; list-style-type: disc;">');
           inUl = true;
         }
-        processedLines.push(`<li class="small my-1" style="line-height: 1.6;">${ulMatch[1]}</li>`);
+        processedLines.push(`<li class="small my-0 py-0" style="line-height: 1.45;">${ulMatch[1]}</li>`);
       } else if (olMatch) {
         if (inUl) {
           processedLines.push('</ul>');
           inUl = false;
         }
         if (!inOl) {
-          processedLines.push('<ol class="my-2 text-start" style="padding-left: 1.25rem;">');
+          processedLines.push('<ol class="my-1 text-start" style="padding-left: 1.1rem;">');
           inOl = true;
         }
-        processedLines.push(`<li class="small my-1" style="line-height: 1.6;">${olMatch[2]}</li>`);
+        processedLines.push(`<li class="small my-0 py-0" style="line-height: 1.45;">${olMatch[2]}</li>`);
       } else {
         if (inUl) {
           processedLines.push('</ul>');
@@ -236,7 +236,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
         className="m-0 small text-start"
         style={{ 
           whiteSpace: 'pre-line',
-          lineHeight: '1.6',
+          lineHeight: '1.45',
           fontSize: '0.85rem',
           wordBreak: 'break-all'
         }}
