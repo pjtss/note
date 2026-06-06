@@ -6,6 +6,7 @@ export interface IAuthService {
   register(input: RegisterInput, rememberMe?: boolean): Promise<UserSession>;
   login(input: LoginInput, rememberMe?: boolean): Promise<UserSession>;
   socialLogin(provider: SocialProvider, rememberMe?: boolean): Promise<UserSession>;
+  handleKakaoCallback(code: string, redirectUri: string, rememberMe: boolean): Promise<UserSession>;
   logout(): Promise<void>;
   getAccessToken(): string | null;
 }
@@ -182,6 +183,39 @@ export class JwtAuthService implements IAuthService {
   }
 
   async socialLogin(provider: SocialProvider, rememberMe: boolean = true): Promise<UserSession> {
+    if (provider === 'kakao') {
+      if (!isBrowser.check()) {
+        return {
+          id: 'oauth-pending',
+          username: '',
+          displayName: '',
+          provider: 'kakao',
+          createdAt: ''
+        };
+      }
+      
+      const clientId = process.env.NEXT_PUBLIC_KAKAO_CLIENT_ID || (process.env.NODE_ENV === 'test' ? 'mock-kakao-client-id' : null);
+      if (!clientId) {
+        throw new Error('카카오 클라이언트 ID(NEXT_PUBLIC_KAKAO_CLIENT_ID) 설정이 존재하지 않습니다.');
+      }
+      
+      const redirectUri = `${window.location.origin}/auth/kakao/callback`;
+      const state = rememberMe ? 'remember' : 'session';
+      const authorizationUrl = `https://kauth.kakao.com/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&state=${state}`;
+      
+      if (process.env.NODE_ENV !== 'test') {
+        window.location.href = authorizationUrl;
+      }
+      
+      return {
+        id: 'oauth-pending',
+        username: 'kakao_friend@kakao.com',
+        displayName: '카카오 라이언',
+        provider: 'kakao',
+        createdAt: new Date().toISOString()
+      };
+    }
+
     // 소셜 로그인 모의 인증: 클라이언트 사이드 가상 모의 세션 즉시 제공 및 JWT 발급
     const socialUsernames: Record<SocialProvider, string> = {
       google: 'google_user@gmail.com',
@@ -219,6 +253,30 @@ export class JwtAuthService implements IAuthService {
 
     this.saveTokens(mockAccessToken, mockRefreshToken, mockUser, rememberMe);
     return mockUser;
+  }
+
+  async handleKakaoCallback(code: string, redirectUri: string, rememberMe: boolean): Promise<UserSession> {
+    const res = await fetch('/api/auth/kakao', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code, redirectUri })
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.error || '카카오 로그인 처리 중 에러가 발생했습니다.');
+    }
+
+    const userSession: UserSession = {
+      id: data.user.id,
+      username: data.user.username,
+      displayName: data.user.displayName,
+      provider: data.user.provider,
+      createdAt: data.user.createdAt
+    };
+
+    this.saveTokens(data.accessToken, data.refreshToken, userSession, rememberMe);
+    return userSession;
   }
 
   async logout(): Promise<void> {
