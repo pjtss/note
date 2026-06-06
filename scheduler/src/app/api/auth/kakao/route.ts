@@ -72,6 +72,7 @@ export async function POST(request: Request) {
     const kakaoId = profileData.id.toString();
     const nickname = profileData.kakao_account?.profile?.nickname || profileData.properties?.nickname || '카카오 사용자';
     const email = profileData.kakao_account?.email || null;
+    const kakaoRefreshToken = tokenData.refresh_token || null;
     const username = `kakao_${kakaoId}`;
 
     // 3. 기존 유저 존재 여부 확인 및 자동 가입
@@ -85,13 +86,19 @@ export async function POST(request: Request) {
           username,
           displayName: nickname,
           email,
+          kakaoId,
+          kakaoRefreshToken,
           provider: 'kakao'
         }
       });
-    } else if (email && !user.email) {
+    } else {
       user = await prisma.user.update({
         where: { id: user.id },
-        data: { email }
+        data: {
+          email: email || user.email,
+          kakaoId: kakaoId || user.kakaoId,
+          kakaoRefreshToken: kakaoRefreshToken || user.kakaoRefreshToken
+        }
       });
     }
 
