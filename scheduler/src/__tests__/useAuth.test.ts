@@ -10,6 +10,7 @@ jest.mock('../services/authService', () => {
   const mockSocialLogin = jest.fn();
   const mockLogout = jest.fn();
   const mockUpdateProfile = jest.fn();
+  const mockDeleteAccount = jest.fn();
 
   return {
     getAuthService: () => ({
@@ -18,7 +19,8 @@ jest.mock('../services/authService', () => {
       login: mockLogin,
       socialLogin: mockSocialLogin,
       logout: mockLogout,
-      updateProfile: mockUpdateProfile
+      updateProfile: mockUpdateProfile,
+      deleteAccount: mockDeleteAccount
     })
   };
 });
@@ -31,6 +33,7 @@ describe('useAuth 커스텀 훅 테스트', () => {
   const mockSocialLogin = mockService.socialLogin as jest.Mock;
   const mockLogout = mockService.logout as jest.Mock;
   const mockUpdateProfile = (mockService as any).updateProfile as jest.Mock;
+  const mockDeleteAccount = (mockService as any).deleteAccount as jest.Mock;
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -276,6 +279,47 @@ describe('useAuth 커스텀 훅 테스트', () => {
     });
 
     expect(result.current.authError).toBe('Update Failed');
+  });
+
+  test('deleteAccount - 성공 시 회원 탈퇴를 완료하고 세션을 소거해야 함', async () => {
+    const mockSession = { id: 'u-1', username: 'test@test.com', displayName: '홍길동', provider: 'local', createdAt: '2026-05-20' };
+    mockGetCurrentSession.mockResolvedValue(mockSession);
+
+    const { result } = renderHook(() => useAuth());
+
+    await act(async () => {
+      await new Promise(resolve => setTimeout(resolve, 0));
+    });
+
+    expect(result.current.user).toEqual(mockSession);
+
+    mockDeleteAccount.mockResolvedValue(undefined);
+
+    await act(async () => {
+      await result.current.deleteAccount();
+    });
+
+    expect(result.current.user).toBeNull();
+  });
+
+  test('deleteAccount - 실패 시 에러를 throw 하고 authError 상태를 갱신해야 함', async () => {
+    const mockSession = { id: 'u-1', username: 'test@test.com', displayName: '홍길동', provider: 'local', createdAt: '2026-05-20' };
+    mockGetCurrentSession.mockResolvedValue(mockSession);
+
+    const { result } = renderHook(() => useAuth());
+
+    await act(async () => {
+      await new Promise(resolve => setTimeout(resolve, 0));
+    });
+
+    mockDeleteAccount.mockRejectedValue(new Error('Delete Failed'));
+
+    await act(async () => {
+      await expect(result.current.deleteAccount())
+        .rejects.toThrow('Delete Failed');
+    });
+
+    expect(result.current.authError).toBe('Delete Failed');
   });
 });
 

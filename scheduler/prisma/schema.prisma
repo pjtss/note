@@ -17,6 +17,7 @@ model User {
   kakaoRefreshToken String?
   provider          String   @default("local")
   createdAt         DateTime @default(now())
+  pushEnabled       Boolean  @default(true)
 
   @@map("users")
 }

@@ -29,9 +29,7 @@ export async function POST(request: Request) {
     });
 
     if (!dbToken || new Date(dbToken.expiresAt).getTime() < Date.now()) {
-      // 위조되었거나 이미 만료/원격 폐기(Revoked)된 리프레시 토큰
       if (dbToken) {
-        // 만료된 토큰이 DB에 있으면 조용히 청소 삭제
         await prisma.refreshToken.delete({ where: { id: dbToken.id } }).catch(() => {});
       }
       return NextResponse.json(
@@ -40,12 +38,24 @@ export async function POST(request: Request) {
       );
     }
 
+    const user = await prisma.user.findUnique({
+      where: { id: payload.userId }
+    });
+
+    if (!user) {
+      return NextResponse.json(
+        { error: '존재하지 않는 사용자입니다.' },
+        { status: 401 }
+      );
+    }
+
     // 3. RTR (Refresh Token Rotation) 기동: 두 토큰 모두 신규 갱신 발행
     const tokenPayload = {
-      userId: payload.userId,
-      username: payload.username,
-      displayName: payload.displayName,
-      provider: payload.provider
+      userId: user.id,
+      username: user.username,
+      displayName: user.displayName,
+      provider: user.provider,
+      pushEnabled: user.pushEnabled
     };
 
     const newAccessToken = JwtService.generateAccessToken(tokenPayload);
@@ -59,7 +69,7 @@ export async function POST(request: Request) {
       prisma.refreshToken.create({
         data: {
           token: newRefreshToken,
-          userId: payload.userId,
+          userId: user.id,
           expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000) // 새 24시간
         }
       })
@@ -68,7 +78,13 @@ export async function POST(request: Request) {
     return NextResponse.json({
       accessToken: newAccessToken,
       refreshToken: newRefreshToken,
-      user: tokenPayload
+      user: {
+        userId: user.id,
+        username: user.username,
+        displayName: user.displayName,
+        provider: user.provider,
+        pushEnabled: user.pushEnabled
+      }
     });
   } catch (err: any) {
     return NextResponse.json(

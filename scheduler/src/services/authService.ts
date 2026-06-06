@@ -7,7 +7,8 @@ export interface IAuthService {
   login(input: LoginInput, rememberMe?: boolean): Promise<UserSession>;
   socialLogin(provider: SocialProvider, rememberMe?: boolean): Promise<UserSession>;
   handleKakaoCallback(code: string, redirectUri: string, rememberMe: boolean): Promise<UserSession>;
-  updateProfile(displayName: string, currentPassword?: string, newPassword?: string): Promise<UserSession>;
+  updateProfile(displayName: string, currentPassword?: string, newPassword?: string, pushEnabled?: boolean): Promise<UserSession>;
+  deleteAccount(): Promise<void>;
   logout(): Promise<void>;
   getAccessToken(): string | null;
 }
@@ -128,7 +129,8 @@ export class JwtAuthService implements IAuthService {
       username: data.user.username,
       displayName: data.user.displayName,
       provider: data.user.provider || 'local',
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
+      pushEnabled: data.user.pushEnabled
     };
 
     this.saveTokens(data.accessToken, data.refreshToken, newUserSession, rememberMe);
@@ -152,7 +154,8 @@ export class JwtAuthService implements IAuthService {
       username: data.user.username,
       displayName: data.user.displayName,
       provider: data.user.provider,
-      createdAt: data.user.createdAt
+      createdAt: data.user.createdAt,
+      pushEnabled: data.user.pushEnabled
     };
 
     this.saveTokens(data.accessToken, data.refreshToken, userSession, rememberMe);
@@ -176,7 +179,8 @@ export class JwtAuthService implements IAuthService {
       username: data.user.username,
       displayName: data.user.displayName,
       provider: data.user.provider,
-      createdAt: data.user.createdAt
+      createdAt: data.user.createdAt,
+      pushEnabled: data.user.pushEnabled
     };
 
     this.saveTokens(data.accessToken, data.refreshToken, userSession, rememberMe);
@@ -191,7 +195,8 @@ export class JwtAuthService implements IAuthService {
           username: '',
           displayName: '',
           provider: 'kakao',
-          createdAt: ''
+          createdAt: '',
+          pushEnabled: true
         };
       }
       
@@ -213,7 +218,8 @@ export class JwtAuthService implements IAuthService {
         username: 'kakao_friend@kakao.com',
         displayName: '카카오 라이언',
         provider: 'kakao',
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
+        pushEnabled: true
       };
     }
 
@@ -236,7 +242,8 @@ export class JwtAuthService implements IAuthService {
       username: socialUsernames[provider],
       displayName: socialNames[provider],
       provider: provider,
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
+      pushEnabled: true
     };
 
     // 모의 테스트 및 로컬 가가동을 위해 임시 JWT 토큰 듀오를 로컬 상에서 직접 가제작하여 저장
@@ -273,14 +280,15 @@ export class JwtAuthService implements IAuthService {
       username: data.user.username,
       displayName: data.user.displayName,
       provider: data.user.provider,
-      createdAt: data.user.createdAt
+      createdAt: data.user.createdAt,
+      pushEnabled: data.user.pushEnabled
     };
 
     this.saveTokens(data.accessToken, data.refreshToken, userSession, rememberMe);
     return userSession;
   }
 
-  async updateProfile(displayName: string, currentPassword?: string, newPassword?: string): Promise<UserSession> {
+  async updateProfile(displayName: string, currentPassword?: string, newPassword?: string, pushEnabled?: boolean): Promise<UserSession> {
     const token = this.getAccessToken();
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
     if (token) {
@@ -290,7 +298,7 @@ export class JwtAuthService implements IAuthService {
     const res = await fetch('/api/auth/update-profile', {
       method: 'POST',
       headers,
-      body: JSON.stringify({ displayName, currentPassword, newPassword })
+      body: JSON.stringify({ displayName, currentPassword, newPassword, pushEnabled })
     });
 
     const data = await res.json();
@@ -304,13 +312,34 @@ export class JwtAuthService implements IAuthService {
       displayName: data.user.displayName,
       email: data.user.email,
       provider: data.user.provider,
-      createdAt: data.user.createdAt
+      createdAt: data.user.createdAt,
+      pushEnabled: data.user.pushEnabled
     };
 
     const isLocal = isBrowser.check() && !!localStorage.getItem(this.REFRESH_TOKEN_KEY);
     this.saveTokens(data.accessToken, data.refreshToken, newUserSession, isLocal);
 
     return newUserSession;
+  }
+
+  async deleteAccount(): Promise<void> {
+    const token = this.getAccessToken();
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const res = await fetch('/api/auth/delete-account', {
+      method: 'POST',
+      headers
+    });
+
+    if (!res.ok) {
+      const data = await res.json();
+      throw new Error(data.error || '회원 탈퇴에 실패했습니다.');
+    }
+
+    this.clearTokens();
   }
 
   async logout(): Promise<void> {

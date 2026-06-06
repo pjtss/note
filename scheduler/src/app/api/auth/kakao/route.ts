@@ -107,7 +107,8 @@ export async function POST(request: Request) {
       userId: user.id,
       username: user.username,
       displayName: user.displayName,
-      provider: user.provider
+      provider: user.provider,
+      pushEnabled: user.pushEnabled
     };
 
     const accessToken = JwtService.generateAccessToken(payload);
@@ -132,7 +133,8 @@ export async function POST(request: Request) {
         displayName: user.displayName,
         email: user.email,
         provider: user.provider,
-        createdAt: user.createdAt
+        createdAt: user.createdAt,
+        pushEnabled: user.pushEnabled
       }
     });
   } catch (err: any) {

@@ -95,16 +95,31 @@ export function useAuth() {
     }
   }, [getService]);
 
-  const updateProfile = useCallback(async (displayName: string, currentPassword?: string, newPassword?: string) => {
+  const updateProfile = useCallback(async (displayName: string, currentPassword?: string, newPassword?: string, pushEnabled?: boolean) => {
     setLoading(true);
     setAuthError(null);
     try {
       const activeService = getService();
-      const session = await activeService.updateProfile(displayName, currentPassword, newPassword);
+      const session = await activeService.updateProfile(displayName, currentPassword, newPassword, pushEnabled);
       setUser(session);
       return session;
     } catch (err: any) {
       setAuthError(err.message || '프로필 수정 도중 장해가 발생했습니다.');
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, [getService]);
+
+  const deleteAccount = useCallback(async () => {
+    setLoading(true);
+    setAuthError(null);
+    try {
+      const activeService = getService();
+      await activeService.deleteAccount();
+      setUser(null);
+    } catch (err: any) {
+      setAuthError(err.message || '회원 탈퇴 도중 장해가 발생했습니다.');
       throw err;
     } finally {
       setLoading(false);
@@ -125,6 +140,7 @@ export function useAuth() {
     signInSocial,
     signOutUser,
     updateProfile,
+    deleteAccount,
     fetchSession
   };
 }

@@ -7,6 +7,7 @@ export interface UserSession {
   email?: string | null;
   provider: 'local' | SocialProvider;
   createdAt: string;
+  pushEnabled: boolean;
 }
 
 export interface RegisterInput {

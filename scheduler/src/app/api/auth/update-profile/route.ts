@@ -24,7 +24,7 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { displayName, currentPassword, newPassword } = body;
+    const { displayName, currentPassword, newPassword, pushEnabled } = body;
 
     if (!displayName || displayName.trim() === '') {
       return NextResponse.json(
@@ -48,6 +48,10 @@ export async function POST(request: Request) {
     const updateData: any = {
       displayName: displayName.trim()
     };
+
+    if (typeof pushEnabled === 'boolean') {
+      updateData.pushEnabled = pushEnabled;
+    }
 
     // 2. 비밀번호 변경 요청 처리
     if (newPassword || currentPassword) {
@@ -93,7 +97,8 @@ export async function POST(request: Request) {
       userId: user.id,
       username: user.username,
       displayName: user.displayName,
-      provider: user.provider
+      provider: user.provider,
+      pushEnabled: user.pushEnabled
     };
 
     const accessToken = JwtService.generateAccessToken(payload);
@@ -118,7 +123,8 @@ export async function POST(request: Request) {
         displayName: user.displayName,
         email: user.email,
         provider: user.provider,
-        createdAt: user.createdAt
+        createdAt: user.createdAt,
+        pushEnabled: user.pushEnabled
       }
     });
   } catch (err: any) {

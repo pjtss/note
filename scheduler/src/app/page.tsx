@@ -21,7 +21,8 @@ export default function Home() {
     signInUser,
     signInSocial,
     signOutUser,
-    updateProfile
+    updateProfile,
+    deleteAccount
   } = useAuth();
 
   // 프로필 변경 폼 상태
@@ -31,6 +32,7 @@ export default function Home() {
   const [profileNewPasswordConfirm, setProfileNewPasswordConfirm] = useState('');
   const [profileError, setProfileError] = useState<string | null>(null);
   const [profileSuccess, setProfileSuccess] = useState<string | null>(null);
+  const [isDeleteAccountModalOpen, setIsDeleteAccountModalOpen] = useState(false);
 
   // 세션 로드 시 프로필 닉네임 상태 동기화
   useEffect(() => {
@@ -203,9 +205,10 @@ export default function Home() {
     }
   }, []);
 
-  // 60초 주기 일정 당일/당시 백그라운드 푸시 알림 체크 엔진 (옵션 A)
   useEffect(() => {
     if (!mounted || !user) return;
+    if (!user.pushEnabled) return; // 글로벌 알림 수신 설정 감지 및 수신 거부 바이패스
+
 
     const checkSchedulesForPush = () => {
       if (Notification.permission !== 'granted') return;
@@ -710,6 +713,28 @@ ${memo.content}`;
       showToast('👤 프로필 수정 성공!');
     } catch (err: any) {
       setProfileError(err.message || '프로필 수정 중 오류가 발생했습니다.');
+    }
+  };
+
+  // 글로벌 푸시 수신 여부 토글 핸들러
+  const handleTogglePush = async () => {
+    if (!user) return;
+    try {
+      await updateProfile(user.displayName, undefined, undefined, !user.pushEnabled);
+      showToast(`📢 푸시 알림 수신이 ${!user.pushEnabled ? '활성화' : '비활성화'}되었습니다.`);
+    } catch (err: any) {
+      showToast('❌ 푸시 알림 설정 변경 실패');
+    }
+  };
+
+  // 회원 탈퇴 실행 핸들러
+  const handleDeleteAccount = async () => {
+    try {
+      await deleteAccount();
+      setIsDeleteAccountModalOpen(false);
+      showToast('👋 회원 탈퇴가 완료되었습니다. 이용해 주셔서 감사합니다.');
+    } catch (err: any) {
+      showToast(`❌ 회원 탈퇴 실패: ${err.message}`);
     }
   };
 
@@ -1976,6 +2001,36 @@ ${memo.content}`;
                         />
                       </div>
 
+                      {/* 글로벌 푸시 알림 수신 설정 (네온 토글 스위치) */}
+                      <div className="mb-4 p-4 rounded-4 border" style={{ backgroundColor: 'rgba(255, 255, 255, 0.02)', borderColor: 'rgba(255, 255, 255, 0.05)' }}>
+                        <div className="d-flex align-items-center justify-content-between">
+                          <div>
+                            <h6 className="fw-bold text-white mb-1 d-flex align-items-center gap-2">
+                              <i className="bi bi-bell-fill text-info" style={{ filter: 'drop-shadow(0 0 5px var(--neon-cyan))' }}></i>
+                              글로벌 푸시 알림 수신 설정
+                            </h6>
+                            <small className="text-secondary" style={{ fontSize: '0.8rem', opacity: 0.7 }}>
+                              체크 해제 시 기기의 일정 시작 알림이 더 이상 전송되지 않습니다.
+                            </small>
+                          </div>
+                          <div className="form-check form-switch p-0 m-0">
+                            <input
+                              className="form-check-input cursor-pointer switch-neon-cyan"
+                              type="checkbox"
+                              id="profilePushEnabled"
+                              checked={user.pushEnabled}
+                              onChange={handleTogglePush}
+                              style={{ 
+                                width: '50px', 
+                                height: '26px',
+                                cursor: 'pointer',
+                                filter: user.pushEnabled ? 'drop-shadow(0 0 5px rgba(0, 240, 255, 0.5))' : 'none'
+                              }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+
                       {/* 비밀번호 변경 필드 (Local 유저 한정 노출) */}
                       {user.provider === 'local' && (
                         <div className="p-4 rounded-4 mb-4 border" style={{ backgroundColor: 'rgba(255, 255, 255, 0.02)', borderColor: 'rgba(255, 255, 255, 0.05)' }}>
@@ -2027,6 +2082,24 @@ ${memo.content}`;
                       >
                         <i className="bi bi-check-circle-fill me-2"></i>변경 사항 저장하기
                       </button>
+
+                      {/* 계정 탈퇴 액션 영역 (Danger Zone) */}
+                      <div className="mt-5 pt-3 border-top" style={{ borderColor: 'rgba(255, 255, 255, 0.08)' }}>
+                        <div className="d-flex align-items-center justify-content-between">
+                          <div>
+                            <span className="text-secondary small fw-semibold">위험 구역 (Danger Zone)</span>
+                            <p className="text-muted small mb-0" style={{ fontSize: '0.75rem', opacity: 0.6 }}>계정을 삭제하면 복구가 불가능하며, 일정 및 메모 등 모든 정보가 소멸됩니다.</p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setIsDeleteAccountModalOpen(true)}
+                            className="btn btn-sm btn-outline-danger px-3 py-2 rounded-3"
+                            style={{ fontSize: '0.8rem', border: '1px solid rgba(239, 68, 68, 0.3)' }}
+                          >
+                            계정 탈퇴하기
+                          </button>
+                        </div>
+                      </div>
                     </form>
                   </div>
                 </div>
@@ -2923,6 +2996,70 @@ ${memo.content}`;
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* 회원 탈퇴 확인 모달 (Danger Zone Glassmorphic) */}
+      {isDeleteAccountModalOpen && (
+        <div 
+          className="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center px-3"
+          style={{
+            zIndex: 10000,
+            backgroundColor: 'rgba(15, 23, 42, 0.85)',
+            backdropFilter: 'blur(16px)',
+            transition: 'all 0.3s ease-in-out'
+          }}
+          onClick={() => setIsDeleteAccountModalOpen(false)}
+        >
+          <div 
+            className="w-100 h-100 d-flex flex-column align-items-center justify-content-center scale-in text-white p-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* 경고 비주얼 */}
+            <div 
+              className="mb-4 d-flex align-items-center justify-content-center rounded-circle"
+              style={{
+                width: '120px',
+                height: '120px',
+                background: 'radial-gradient(circle, #ff8787 0%, #fa5252 100%)',
+                boxShadow: '0 15px 35px rgba(250, 82, 82, 0.4), inset 0 -8px 0px rgba(0,0,0,0.15)',
+                animation: 'pulse 2s infinite'
+              }}
+            >
+              <i className="bi bi-person-x-fill text-white" style={{ fontSize: '3.5rem' }}></i>
+            </div>
+
+            <h2 className="fw-bold mb-2 display-font text-white">정말로 탈퇴하시겠습니까?</h2>
+            <p className="text-white-50 text-center mb-5" style={{ maxWidth: '500px', fontSize: '1.1rem', lineHeight: '1.6' }}>
+              회원 탈퇴 시 작성하신 모든 일정, 메모 정보가 즉시 소멸되며<br />
+              소셜(카카오 등) 연동 연결이 안전하게 차단/해제됩니다.<br />
+              이 작업은 절대 되돌릴 수 없습니다.
+            </p>
+
+            {/* 취소 / 탈퇴 버튼 */}
+            <div className="d-flex gap-3 justify-content-center w-100" style={{ maxWidth: '480px' }}>
+              <button
+                onClick={() => setIsDeleteAccountModalOpen(false)}
+                className="btn btn-outline-light py-3.5 rounded-4 fw-bold flex-grow-1"
+                style={{ fontSize: '1.1rem', backdropFilter: 'blur(5px)', border: '2px solid rgba(255,255,255,0.4)', borderRadius: '12px' }}
+              >
+                아니오, 유지할래요
+              </button>
+              <button
+                onClick={handleDeleteAccount}
+                className="btn btn-danger py-3.5 rounded-4 fw-bold flex-grow-1 shadow-lg"
+                style={{
+                  fontSize: '1.1rem',
+                  backgroundColor: '#fa5252',
+                  border: 'none',
+                  boxShadow: '0 10px 25px rgba(250, 82, 82, 0.3)',
+                  borderRadius: '12px'
+                }}
+              >
+                네, 탈퇴하겠습니다
+              </button>
+            </div>
           </div>
         </div>
       )}
