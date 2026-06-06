@@ -4,6 +4,7 @@ export interface UserSession {
   id: string;
   username: string;
   displayName: string;
+  email?: string | null;
   provider: 'local' | SocialProvider;
   createdAt: string;
 }

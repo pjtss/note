@@ -12,6 +12,7 @@ model User {
   username    String   @unique
   password    String?
   displayName String
+  email       String?
   provider    String   @default("local")
   createdAt   DateTime @default(now())
 
