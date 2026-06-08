@@ -1,12 +1,297 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type FormEvent } from 'react';
 import { useSchedules } from '../hooks/useSchedules';
 import { ScheduleCategory, Schedule } from '../types/schedule';
 import { useMemos } from '../hooks/useMemos';
 import { Memo } from '../types/memo';
 import { useAuth } from '../hooks/useAuth';
 import { MarkdownRenderer } from '../components/MarkdownRenderer';
+import { ScheduleSection } from '../components/ScheduleSection';
+import { ScheduleModal as ScheduleModalView } from '../components/ScheduleModal';
+import { MemoModal as MemoModalView } from '../components/MemoModal';
+import {
+  pastelColors as pastelColorsData,
+  fontOptions as fontOptionsData,
+  checkIfDarkColor as checkIfDarkColorUtil,
+  hexToRgba as hexToRgbaUtil,
+  getSelectedFontCss as getSelectedFontCssUtil,
+  createSlashSuggestions as createSlashSuggestionsUtil,
+  slashCommands as slashCommandsData
+} from '../lib/editorUi';
+
+type ScheduleModalProps = {
+  open: boolean;
+  editingScheduleId: string | null;
+  title: string;
+  setTitle: (value: string) => void;
+  description: string;
+  setDescription: (value: string) => void;
+  hasTime: boolean;
+  setHasTime: (value: boolean) => void;
+  startDate: string;
+  setStartDate: (value: string) => void;
+  startTimeVal: string;
+  setStartTimeVal: (value: string) => void;
+  endDate: string;
+  setEndDate: (value: string) => void;
+  endTimeVal: string;
+  setEndTimeVal: (value: string) => void;
+  category: ScheduleCategory;
+  setCategory: (value: ScheduleCategory) => void;
+  onClose: () => void;
+  onSubmit: (e: FormEvent) => void;
+  onSaveOnly: () => void;
+};
+
+type MemoModalProps = {
+  open: boolean;
+  editingMemoId: string | null;
+  memoTitle: string;
+  setMemoTitle: (value: string) => void;
+  memoContent: string;
+  setMemoContent: (value: string) => void;
+  memoColor: string;
+  setMemoColor: (value: string) => void;
+  selectedFont: string;
+  handleFontChange: (value: string) => void;
+  memoSuggestionsVisible: boolean;
+  selectedSlashSuggestionIndex: number;
+  slashSuggestions: { label: string; insert: string }[];
+  insertSlashCommand: (value: string) => void;
+  onClose: () => void;
+  onSubmit: (e: FormEvent) => void;
+  onSaveOnly: () => void;
+  handleCancelMemoEdit: () => void;
+  pastelColors: { hex: string; name: string }[];
+  fontOptions: { value: string; name: string }[];
+  checkIfDarkColor: (hex: string) => boolean;
+  memoError: string | null;
+};
+
+function ScheduleModal({
+  open,
+  editingScheduleId,
+  title,
+  setTitle,
+  description,
+  setDescription,
+  hasTime,
+  setHasTime,
+  startDate,
+  setStartDate,
+  startTimeVal,
+  setStartTimeVal,
+  endDate,
+  setEndDate,
+  endTimeVal,
+  setEndTimeVal,
+  category,
+  setCategory,
+  onClose,
+  onSubmit,
+  onSaveOnly
+}: ScheduleModalProps) {
+  if (!open) return null;
+
+  return (
+    <div
+      className="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center px-3"
+      style={{
+        zIndex: 10000,
+        backgroundColor: 'rgba(15, 23, 42, 0.65)',
+        backdropFilter: 'blur(12px)',
+        transition: 'all 0.3s ease-in-out'
+      }}
+      onClick={onClose}
+    >
+      <div
+        className="premium-card p-4 w-100 rounded-4 position-relative scale-in"
+        style={{
+          maxWidth: '500px',
+          backgroundColor: 'rgba(15, 18, 36, 0.95)',
+          color: '#cbd5e1',
+          border: `1px solid ${editingScheduleId ? 'rgba(245, 158, 11, 0.25)' : 'rgba(99, 102, 241, 0.25)'}`,
+          borderTop: `6px solid ${editingScheduleId ? '#f59e0b' : '#6366f1'}`,
+          boxShadow: `0 0 30px ${editingScheduleId ? 'rgba(245, 158, 11, 0.15)' : 'rgba(99, 102, 241, 0.15)'}, 0 20px 50px rgba(0, 0, 0, 0.6)`
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="d-flex align-items-center justify-content-between mb-4 border-bottom pb-2" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
+          <h5 className="fw-bold mb-0 d-flex align-items-center gap-2" style={{ color: '#ffffff' }}>
+            <i className={`bi ${editingScheduleId ? 'bi-pencil-square text-warning' : 'bi-plus-circle-fill text-primary'}`}></i>
+            {editingScheduleId ? '일정 수정하기' : '새로운 일정 등록'}
+          </h5>
+          <button
+            onClick={onClose}
+            className="btn btn-sm rounded-circle d-flex align-items-center justify-content-center border-0 p-2"
+            style={{ backgroundColor: 'rgba(255, 255, 255, 0.06)', width: '32px', height: '32px', color: '#94a3b8' }}
+          >
+            <i className="bi bi-x-lg"></i>
+          </button>
+        </div>
+
+        <p className="small text-muted mb-3">일정 등록과 수정은 큰 모달에서 처리되어, 목록 공간을 더 넓게 사용할 수 있습니다.</p>
+
+        <form onSubmit={onSubmit}>
+          <div className="mb-3 text-start">
+            <label htmlFor="title" className="form-label small fw-semibold text-muted">일정 제목 *</label>
+            <input type="text" id="title" className="form-control form-premium-control" placeholder="예: Supabase 연동 개발 회의" value={title} onChange={(e) => setTitle(e.target.value)} required />
+          </div>
+          <div className="mb-3 text-start">
+            <label htmlFor="description" className="form-label small fw-semibold text-muted">상세 설명</label>
+            <textarea id="description" className="form-control form-premium-control" rows={3} placeholder="구체적인 업무 내용 및 메모..." value={description} onChange={(e) => setDescription(e.target.value)} />
+          </div>
+          <div className="form-check mb-3 text-start">
+            <input type="checkbox" className="form-check-input cursor-pointer" id="hasTime" checked={hasTime} onChange={(e) => setHasTime(e.target.checked)} />
+            <label className="form-check-label small text-muted cursor-pointer" htmlFor="hasTime" style={{ userSelect: 'none' }}>
+              ⏰ 시간 설정 활성화 (체크 해제 시 하루 종일 일정으로 등록)
+            </label>
+          </div>
+          <div className="row g-2 mb-3 text-start">
+            <div className="col-12 col-md-6">
+              <label htmlFor="startDate" className="form-label small fw-semibold text-muted">시작 날짜 *</label>
+              <input type="date" id="startDate" className="form-control form-premium-control" value={startDate} onChange={(e) => setStartDate(e.target.value)} required />
+            </div>
+            {hasTime && (
+              <div className="col-12 col-md-6">
+                <label htmlFor="startTimeVal" className="form-label small fw-semibold text-muted">시작 시간 *</label>
+                <input type="time" id="startTimeVal" className="form-control form-premium-control" value={startTimeVal} onChange={(e) => setStartTimeVal(e.target.value)} required />
+              </div>
+            )}
+          </div>
+          <div className="row g-2 mb-3 text-start">
+            <div className="col-12 col-md-6">
+              <label htmlFor="endDate" className="form-label small fw-semibold text-muted">종료 날짜 *</label>
+              <input type="date" id="endDate" className="form-control form-premium-control" value={endDate} onChange={(e) => setEndDate(e.target.value)} required />
+            </div>
+            {hasTime && (
+              <div className="col-12 col-md-6">
+                <label htmlFor="endTimeVal" className="form-label small fw-semibold text-muted">종료 시간 *</label>
+                <input type="time" id="endTimeVal" className="form-control form-premium-control" value={endTimeVal} onChange={(e) => setEndTimeVal(e.target.value)} required />
+              </div>
+            )}
+          </div>
+          <div className="mb-4 text-start">
+            <label htmlFor="category" className="form-label small fw-semibold text-muted">카테고리</label>
+            <select id="category" className="form-select form-premium-control" value={category} onChange={(e) => setCategory(e.target.value as ScheduleCategory)}>
+              <option value="Work">🏢 업무 (Work)</option>
+              <option value="Personal">🏡 개인 (Personal)</option>
+              <option value="Important">⭐ 중요 (Important)</option>
+              <option value="Meeting">👥 회의 (Meeting)</option>
+              <option value="Etc">🏷️ 기타 (Etc)</option>
+            </select>
+          </div>
+          <div className="d-flex gap-3 align-items-center w-100" style={{ maxWidth: '500px', margin: '0 auto' }}>
+            <button type="button" onClick={onClose} className="btn d-flex align-items-center justify-content-center gap-2 px-4 py-3 fw-bold transition-all" style={{ borderRadius: '14px', flex: '1', background: 'rgba(241, 245, 249, 0.9)', border: '1px solid rgba(226, 232, 240, 0.8)', color: '#475569', fontSize: '0.95rem' }}>
+              <i className="bi bi-arrow-left-circle-fill fs-5"></i>
+              <span>취소</span>
+            </button>
+            {editingScheduleId && (
+              <button type="button" onClick={onSaveOnly} className="btn d-flex align-items-center justify-content-center gap-2 px-4 py-3 fw-bold text-white transition-all animate-fade-in" style={{ borderRadius: '14px', flex: '1', background: 'linear-gradient(135deg, #34d399, #10b981)', border: 'none', fontSize: '0.95rem' }}>
+                <i className="bi bi-save-fill fs-5"></i>
+                <span>임시 저장</span>
+              </button>
+            )}
+            <button type="submit" className="btn d-flex align-items-center justify-content-center gap-2 py-3 fw-bold text-white transition-all" style={{ borderRadius: '14px', flex: '2', background: editingScheduleId ? 'linear-gradient(135deg, #fbbf24, #f59e0b)' : 'linear-gradient(135deg, #6366f1, #3b82f6)', color: editingScheduleId ? '#1e293b' : '#ffffff', border: 'none', fontSize: '0.95rem' }}>
+              <i className="bi bi-check-circle-fill fs-5"></i>
+              <span>{editingScheduleId ? '수정 완료' : '일정 등록'}</span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function MemoModal({
+  open,
+  editingMemoId,
+  memoTitle,
+  setMemoTitle,
+  memoContent,
+  setMemoContent,
+  memoColor,
+  setMemoColor,
+  selectedFont,
+  handleFontChange,
+  memoSuggestionsVisible,
+  selectedSlashSuggestionIndex,
+  slashSuggestions,
+  insertSlashCommand,
+  onClose,
+  onSubmit,
+  onSaveOnly,
+  handleCancelMemoEdit,
+  pastelColors,
+  fontOptions,
+  checkIfDarkColor,
+  memoError
+}: MemoModalProps) {
+  if (!open) return null;
+
+  return (
+    <div className="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-stretch justify-content-stretch" style={{ zIndex: 10000, backgroundColor: 'rgba(15, 23, 42, 0.65)', backdropFilter: 'blur(12px)', transition: 'all 0.3s ease-in-out' }} onClick={onClose}>
+      <div className="w-100 h-100 d-flex flex-column align-items-center justify-content-start p-4 overflow-auto" onClick={(e) => e.stopPropagation()}>
+        <div className="premium-card p-4 w-100 d-flex flex-column" style={{ maxWidth: '760px', minHeight: 'calc(100vh - 80px)', backgroundColor: 'rgba(15, 18, 36, 0.95)', color: '#cbd5e1', border: `1px solid ${editingMemoId ? 'rgba(245, 158, 11, 0.25)' : 'rgba(99, 102, 241, 0.25)'}`, borderTop: `6px solid ${editingMemoId ? '#f59e0b' : '#6366f1'}`, boxShadow: `0 0 30px ${editingMemoId ? 'rgba(245, 158, 11, 0.15)' : 'rgba(99, 102, 241, 0.15)'}, 0 20px 50px rgba(0, 0, 0, 0.6)` }}>
+          <div className="d-flex align-items-center justify-content-between mb-4 border-bottom pb-2" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
+            <h5 className="fw-bold mb-0 d-flex align-items-center gap-2" style={{ color: '#ffffff' }}>
+              <i className={`bi ${editingMemoId ? 'bi-pencil-square text-warning' : 'bi-sticky-fill text-primary'}`}></i>
+              {editingMemoId ? '메모 수정하기' : '새 메모 작성하기'}
+            </h5>
+            <button onClick={onClose} className="btn btn-sm rounded-circle d-flex align-items-center justify-content-center border-0 p-2" style={{ backgroundColor: 'rgba(255, 255, 255, 0.06)', width: '32px', height: '32px', color: '#94a3b8' }}>
+              <i className="bi bi-x-lg"></i>
+            </button>
+          </div>
+          {memoError && <div className="alert alert-danger border-0 small rounded-3 mb-3">{memoError}</div>}
+          <form onSubmit={onSubmit} className="d-flex flex-column flex-grow-1">
+            <div className="mb-3 text-start">
+              <label htmlFor="memoTitle" className="form-label small fw-semibold text-muted">메모 제목 *</label>
+              <input id="memoTitle" type="text" className="form-control form-premium-control" value={memoTitle} onChange={(e) => setMemoTitle(e.target.value)} required />
+            </div>
+            <div className="mb-3 text-start position-relative flex-grow-1">
+              <label htmlFor="memoContent" className="form-label small fw-semibold text-muted">메모 내용 *</label>
+              <textarea id="memoContent" className="form-control form-premium-control" rows={12} value={memoContent} onChange={(e) => setMemoContent(e.target.value)} />
+              {memoSuggestionsVisible && slashSuggestions.length > 0 && (
+                <div className="position-absolute start-0 w-100 mt-2 rounded-4 overflow-hidden border shadow-lg" style={{ zIndex: 10, backgroundColor: 'rgba(15, 18, 36, 0.98)', borderColor: 'rgba(99, 102, 241, 0.25)', top: 'calc(100% + 0.5rem)' }}>
+                  {slashSuggestions.map((item, index) => (
+                    <button key={item.label} type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => insertSlashCommand(item.insert)} className="w-100 text-start border-0 px-3 py-2 d-flex align-items-center justify-content-between" style={{ backgroundColor: index === selectedSlashSuggestionIndex ? 'rgba(99, 102, 241, 0.25)' : 'transparent', color: '#e2e8f0' }}>
+                      <span className="fw-semibold">{item.label}</span>
+                      <span className="small text-muted">{item.insert.trim()}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="mb-4 text-start">
+              <label className="form-label small fw-semibold text-muted d-block">메모 카드 테마 색상</label>
+              <div className="d-flex flex-wrap gap-2 mt-1">
+                {pastelColors.map((color) => (
+                  <button key={color.hex} type="button" onClick={() => setMemoColor(color.hex)} className="rounded-circle border-0 transition-all d-flex align-items-center justify-content-center shadow-sm" style={{ width: '32px', height: '32px', backgroundColor: color.hex, transform: memoColor === color.hex ? 'scale(1.2)' : 'scale(1)', border: memoColor === color.hex ? '2px solid #000' : 'none' }} title={color.name}>
+                    {memoColor === color.hex && <i className={`bi bi-check-lg ${checkIfDarkColor(color.hex) ? 'text-white' : 'text-dark'}`} style={{ fontSize: '0.8rem' }}></i>}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="mb-4 text-start">
+              <label className="form-label small fw-semibold text-muted d-block">글꼴</label>
+              <select className="form-select form-premium-control w-auto" value={selectedFont} onChange={(e) => handleFontChange(e.target.value)} style={{ fontSize: '0.85rem' }}>
+                {fontOptions.map((font) => <option key={font.value} value={font.value}>{font.name}</option>)}
+              </select>
+            </div>
+            <div className="d-flex gap-3 mt-auto align-items-center w-100" style={{ maxWidth: '650px', margin: '0 auto' }}>
+              <button type="button" onClick={handleCancelMemoEdit} className="btn d-flex align-items-center justify-content-center gap-2 px-4 py-3 fw-bold transition-all" style={{ borderRadius: '14px', flex: '1', background: 'rgba(241, 245, 249, 0.9)', border: '1px solid rgba(226, 232, 240, 0.8)', color: '#475569', fontSize: '0.95rem' }}>
+                <i className="bi bi-arrow-left-circle-fill fs-5"></i><span>취소</span>
+              </button>
+              {editingMemoId && <button type="button" onClick={onSaveOnly} className="btn d-flex align-items-center justify-content-center gap-2 px-4 py-3 fw-bold text-white transition-all animate-fade-in" style={{ borderRadius: '14px', flex: '1', background: 'linear-gradient(135deg, #34d399, #10b981)', border: 'none', fontSize: '0.95rem' }}><i className="bi bi-save-fill fs-5"></i><span>임시 저장</span></button>}
+              <button type="submit" className="btn d-flex align-items-center justify-content-center gap-2 py-3 fw-bold text-white transition-all" style={{ borderRadius: '14px', flex: '2', background: editingMemoId ? 'linear-gradient(135deg, #fbbf24, #f59e0b)' : 'linear-gradient(135deg, #6366f1, #3b82f6)', color: editingMemoId ? '#1e293b' : '#ffffff', border: 'none', fontSize: '0.95rem' }}><i className="bi bi-check-circle-fill fs-5"></i><span>{editingMemoId ? '수정 완료' : '메모 등록'}</span></button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<'schedule' | 'memo' | 'profile'>('schedule');
@@ -118,76 +403,12 @@ export default function Home() {
 
   // 글꼴 선택 커스터마이저 상태 & 옵션 정의
   const [selectedFont, setSelectedFont] = useState<string>('Pretendard');
-  const fontOptions = [
-    { name: '💻 프리텐다드 (모던)', value: 'Pretendard', css: "'Pretendard', -apple-system, sans-serif" },
-    { name: '🌟 Noto Sans KR (필수)', value: 'Noto Sans KR', css: "'Noto Sans KR', sans-serif" },
-    { name: '✍️ 나눔고딕 (단정)', value: 'Nanum Gothic', css: "'Nanum Gothic', sans-serif" },
-    { name: '📖 리디바탕 (도서)', value: 'Ridi Batang', css: "'RIDIBatang', Georgia, serif" },
-    { name: '🎨 바른히피 (키치)', value: 'Gamja Flower', css: "'Gamja Flower', cursive" },
-    { name: '🖋️ 손글씨 (감성)', value: 'Nanum Pen Script', css: "'Nanum Pen Script', cursive" },
-    { name: '👶 배달의민족 주아 (동글)', value: 'Jua', css: "'Jua', sans-serif" },
-    { name: '📝 고운돋움 (따뜻)', value: 'Gowun Dodum', css: "'Gowun Dodum', sans-serif" }
-  ];
-
-  // 선택한 글꼴의 실제 CSS 폰트 패밀리 값 획득 헬퍼
-  const getSelectedFontCss = () => {
-    const found = fontOptions.find(f => f.value === selectedFont);
-    return found ? found.css : "'Pretendard', sans-serif";
-  };
 
   // Supabase 가이드 배너 토글
   const [showGuide, setShowGuide] = useState(false);
 
-  // 사이버펑크 일렉트릭 네온 컬러 팔레트 정의
-  const pastelColors = [
-    { name: '💖 네온핑크', hex: '#ff007f' },
-    { name: '💎 네온시안', hex: '#00f0ff' },
-    { name: '💚 네온그린', hex: '#39ff14' },
-    { name: '⚡ 네온옐로우', hex: '#ffff00' },
-    { name: '🔮 네온퍼플', hex: '#bd00ff' },
-    { name: '🔥 네온오렌지', hex: '#ff5e00' },
-    { name: '💙 네온블루', hex: '#004cff' },
-    { name: '💀 메카닉그레이', hex: '#475569' },
-    { name: '🤍 고스트화이트', hex: '#f8fafc' }
-  ];
-
-  // 어두운 색상 판별 헬퍼 함수 (기존 구형 진한 색상 메모에 대한 하위 호환성 전용)
-  const checkIfDarkColor = (colorHex: string) => {
-    const darkColors = ['#0077b6', '#1d3557', '#2b2d42', '#118ab2', '#4ea8de'];
-    return darkColors.includes(colorHex);
-  };
-
-  const slashCommands = [
-    { label: '/checkbox', insert: '- [ ] ' },
-    { label: '/check', insert: '- [ ] ' },
-    { label: '/h1', insert: '# ' },
-    { label: '/h2', insert: '## ' },
-    { label: '/h3', insert: '### ' },
-    { label: '/hr', insert: '---\n' },
-    { label: '/quote', insert: '> ' },
-    { label: '/bullet', insert: '- ' },
-    { label: '/number', insert: '1. ' }
-  ];
-
   const updateSlashSuggestions = (value: string, cursorPos: number) => {
-    const textBeforeCursor = value.slice(0, cursorPos);
-    const slashIndex = textBeforeCursor.lastIndexOf('/');
-    if (slashIndex < 0) {
-      setSlashSuggestions([]);
-      return;
-    }
-
-    const query = textBeforeCursor.slice(slashIndex + 1);
-    if (query.includes(' ') || query.includes('\n')) {
-      setSlashSuggestions([]);
-      return;
-    }
-
-    const matches = slashCommands.filter((command) =>
-      command.label.slice(1).toLowerCase().startsWith(query.toLowerCase())
-    );
-
-    setSlashSuggestions(matches);
+    setSlashSuggestions(createSlashSuggestionsUtil(value, cursorPos));
     setSelectedSlashSuggestionIndex(0);
   };
 
@@ -1434,382 +1655,31 @@ ${memo.content}`;
           <>
             {/* 1. 일정 관리 (Schedule Tab) */}
             {activeTab === 'schedule' && (
-              <>
-                {/* 6. 오늘의 스케줄 실시간 요약 브리핑 대시보드 */}
-                {(() => {
-                  const briefing = getTodayBriefing();
-                  if (briefing.totalToday === 0) return null;
-                  return (
-                    <div 
-                      className="premium-card p-3 mb-4 border-0 d-flex align-items-center gap-3 animate-fade-in"
-                      style={{
-                        background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.08), rgba(147, 51, 234, 0.08))',
-                        borderLeft: '5px solid #3b82f6',
-                        borderRadius: '16px'
-                      }}
-                    >
-                      <div className="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" style={{ width: '42px', height: '42px' }}>
-                        <i className="bi bi-robot fs-5"></i>
-                      </div>
-                      <div className="flex-grow-1 text-start">
-                        <span className="fw-bold text-white d-block" style={{ fontSize: '0.9rem', textShadow: '0 0 5px var(--neon-cyan)' }}>오늘의 AI 스케줄 브리핑</span>
-                        <small style={{ fontSize: '0.8rem', color: '#cbd5e1' }}>
-                          오늘 진행할 일정이 총 <strong className="text-info">{briefing.totalToday}건</strong> 있으며, 그 중 <strong className="text-success">{briefing.completedToday}건</strong>을 완료했습니다. 
-                          {briefing.importantToday > 0 ? (
-                            <span> 미완료된 중요 일정 <strong className="text-danger">{briefing.importantToday}건</strong>이 있으니 잊지 마세요! 🚨</span>
-                          ) : (
-                            <span> 오늘 남은 과제들을 차근차근 해결해 나가 보세요. 👍</span>
-                          )}
-                        </small>
-                      </div>
-                    </div>
-                  );
-                })()}
-
-                {/* Overview Stats Row */}
-                <div className="row g-3 mb-4">
-                  <div className="col-6 col-md-3">
-                    <div className="premium-card p-3 d-flex align-items-center justify-content-between h-100" style={{ border: '1px solid rgba(0, 240, 255, 0.25)', boxShadow: '0 0 10px rgba(0, 240, 255, 0.05)' }}>
-                      <div>
-                        <span className="text-secondary small d-block mb-1 fw-medium">전체 일정</span>
-                        <span className="h3 mb-0 fw-bold" style={{ color: '#ffffff' }}>{totalCount}</span>
-                      </div>
-                      <div className="rounded-3 p-3 d-flex align-items-center justify-content-center" style={{ width: '46px', height: '46px', backgroundColor: 'rgba(0, 240, 255, 0.12)', color: 'var(--neon-cyan)', border: '1px solid rgba(0, 240, 255, 0.3)', boxShadow: '0 0 8px rgba(0, 240, 255, 0.3)' }}>
-                        <i className="bi bi-calendar3 fs-5"></i>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="col-6 col-md-3">
-                    <div className="premium-card p-3 d-flex align-items-center justify-content-between h-100" style={{ border: '1px solid rgba(57, 255, 20, 0.25)', boxShadow: '0 0 10px rgba(57, 255, 20, 0.05)' }}>
-                      <div>
-                        <span className="text-secondary small d-block mb-1 fw-medium">완료됨</span>
-                        <span className="h3 mb-0 fw-bold" style={{ color: 'var(--neon-green)', textShadow: '0 0 8px rgba(57, 255, 20, 0.3)' }}>{completedCount}</span>
-                      </div>
-                      <div className="rounded-3 p-3 d-flex align-items-center justify-content-center" style={{ width: '46px', height: '46px', backgroundColor: 'rgba(57, 255, 20, 0.12)', color: 'var(--neon-green)', border: '1px solid rgba(57, 255, 20, 0.3)', boxShadow: '0 0 8px rgba(57, 255, 20, 0.3)' }}>
-                        <i className="bi bi-calendar-check fs-5"></i>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="col-6 col-md-3">
-                    <div className="premium-card p-3 d-flex align-items-center justify-content-between h-100" style={{ border: '1px solid rgba(255, 153, 0, 0.25)', boxShadow: '0 0 10px rgba(255, 153, 0, 0.05)' }}>
-                      <div>
-                        <span className="text-secondary small d-block mb-1 fw-medium">진행 중</span>
-                        <span className="h3 mb-0 fw-bold" style={{ color: '#ff9900', textShadow: '0 0 8px rgba(255, 153, 0, 0.3)' }}>{pendingCount}</span>
-                      </div>
-                      <div className="rounded-3 p-3 d-flex align-items-center justify-content-center" style={{ width: '46px', height: '46px', backgroundColor: 'rgba(255, 153, 0, 0.12)', color: '#ff9900', border: '1px solid rgba(255, 153, 0, 0.3)', boxShadow: '0 0 8px rgba(255, 153, 0, 0.3)' }}>
-                        <i className="bi bi-hourglass-split fs-5"></i>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="col-6 col-md-3">
-                    <div className="premium-card p-3 d-flex align-items-center justify-content-between h-100" style={{ border: '1px solid rgba(255, 0, 127, 0.25)', boxShadow: '0 0 10px rgba(255, 0, 127, 0.05)' }}>
-                      <div>
-                        <span className="text-secondary small d-block mb-1 fw-medium">중요 일정</span>
-                        <span className="h3 mb-0 fw-bold" style={{ color: 'var(--neon-pink)', textShadow: '0 0 8px rgba(255, 0, 127, 0.3)' }}>{importantCount}</span>
-                      </div>
-                      <div className="rounded-3 p-3 d-flex align-items-center justify-content-center" style={{ width: '46px', height: '46px', backgroundColor: 'rgba(255, 0, 127, 0.12)', color: 'var(--neon-pink)', border: '1px solid rgba(255, 0, 127, 0.3)', boxShadow: '0 0 8px rgba(255, 0, 127, 0.3)' }}>
-                        <i className="bi bi-star-fill fs-5"></i>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="premium-card p-4">
-                  <div className="d-flex align-items-center justify-content-between flex-wrap gap-3 mb-3">
-                    <div>
-                      <h5 className="fw-bold mb-1">일정 보드</h5>
-                      <p className="small text-secondary mb-0">필터와 목록만 남겨 화면을 넓게 사용합니다.</p>
-                    </div>
-                    <button
-                      onClick={() => {
-                        handleCancelEdit();
-                        setIsScheduleModalOpen(true);
-                      }}
-                      className="btn btn-premium-primary d-flex align-items-center justify-content-center gap-2 transition-all"
-                      style={{ borderRadius: '12px', minWidth: '160px' }}
-                    >
-                      <i className="bi bi-calendar-plus-fill fs-5"></i>
-                      <span>새 일정 계획하기</span>
-                    </button>
-                  </div>
-
-                      {/* Filters Header Bar */}
-                      {/* 9. 카테고리별 컬러 칩 및 원클릭 퀵 필터 */}
-                      <div className="d-flex flex-wrap gap-2 mb-3 align-items-center">
-                        <span className="text-secondary small fw-semibold me-1">카테고리 퀵 필터:</span>
-                        {[
-                          { value: 'All', label: '📁 전체' },
-                          { value: 'Work', label: '🏢 업무' },
-                          { value: 'Personal', label: '🏡 개인' },
-                          { value: 'Important', label: '⭐ 중요' },
-                          { value: 'Meeting', label: '👥 회의' },
-                          { value: 'Etc', label: '🏷️ 기타' },
-                        ].map((chip) => {
-                          const isSelected = categoryFilter === chip.value;
-                          const count = chip.value === 'All' 
-                            ? myRawSchedules.length
-                            : myRawSchedules.filter(s => s.category === chip.value).length;
-
-                          return (
-                            <button
-                              key={chip.value}
-                              onClick={() => setCategoryFilter(chip.value)}
-                              className="btn btn-sm px-2.5 py-1 rounded-pill d-flex align-items-center gap-1.5 transition-all border-0"
-                              style={{
-                                fontSize: '0.75rem',
-                                background: isSelected 
-                                  ? 'linear-gradient(135deg, #6366f1, #a855f7)' 
-                                  : 'rgba(255, 255, 255, 0.05)',
-                                color: isSelected ? '#ffffff' : '#94a3b8',
-                                border: `1px solid ${isSelected ? 'rgba(99, 102, 241, 0.4)' : 'rgba(255, 255, 255, 0.08)'}`,
-                                boxShadow: isSelected ? '0 0 10px rgba(99, 102, 241, 0.4)' : 'none'
-                              }}
-                            >
-                              <span>{chip.label}</span>
-                              <span className="badge rounded-pill" style={{ fontSize: '0.65rem', backgroundColor: isSelected ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.08)', color: isSelected ? '#ffffff' : '#cbd5e1' }}>
-                                {count}
-                              </span>
-                            </button>
-                          );
-                        })}
-                      </div>
-
-                      <div className="row g-3 align-items-center mb-4">
-                        <div className="col-md-5">
-                          <div className="input-group">
-                            <span className="input-group-text border-end-0 rounded-start-pill text-secondary" style={{ backgroundColor: 'rgba(255, 255, 255, 0.03)', borderColor: 'rgba(255, 255, 255, 0.1)' }}>
-                              <i className="bi bi-search"></i>
-                            </span>
-                            <input
-                              type="text"
-                              className="form-control border-start-0 rounded-end-pill form-premium-control"
-                              style={{ paddingLeft: '0.2rem' }}
-                              placeholder="일정 검색..."
-                              value={searchQuery}
-                              onChange={(e) => setSearchQuery(e.target.value)}
-                            />
-                          </div>
-                        </div>
-
-                        <div className="col-md-7 d-flex gap-2 justify-content-md-end flex-wrap">
-                          {/* Category Filter */}
-                          <select
-                            className="form-select form-premium-control w-auto"
-                            value={categoryFilter}
-                            onChange={(e) => setCategoryFilter(e.target.value)}
-                            style={{ fontSize: '0.85rem' }}
-                          >
-                            <option value="All">📁 전체 카테고리</option>
-                            <option value="Work">🏢 업무</option>
-                            <option value="Personal">🏡 개인</option>
-                            <option value="Important">⭐ 중요</option>
-                            <option value="Meeting">👥 회의</option>
-                            <option value="Etc">🏷️ 기타</option>
-                          </select>
-
-                          {/* Completion Filter */}
-                          <select
-                            className="form-select form-premium-control w-auto"
-                            value={completionFilter}
-                            onChange={(e) => setCompletionFilter(e.target.value)}
-                            style={{ fontSize: '0.85rem' }}
-                          >
-                            <option value="All">✔️ 전체 진행상태</option>
-                            <option value="Pending">⏳ 진행 중</option>
-                            <option value="Completed">✅ 완료됨</option>
-                          </select>
-                        </div>
-                      </div>
-
-                      {/* Schedules Timelines */}
-                      {scheduleLoading ? (
-                        <div className="text-center py-5">
-                          <div className="spinner-border text-primary" role="status">
-                            <span className="visually-hidden">로딩 중...</span>
-                          </div>
-                          <p className="mt-3 text-muted">일정 목록을 구성하고 있습니다.</p>
-                        </div>
-                      ) : mySchedules.length === 0 ? (
-                        <div className="text-center py-5 rounded-4 border border-dashed" style={{ backgroundColor: 'rgba(255, 255, 255, 0.02)', borderColor: 'rgba(255, 255, 255, 0.1)' }}>
-                          <div className="rounded-circle shadow-sm d-inline-flex align-items-center justify-content-center p-3 mb-3" style={{ width: '60px', height: '60px', backgroundColor: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.08)' }}>
-                            <i className="bi bi-calendar-x text-secondary fs-3"></i>
-                          </div>
-                          <h6 className="fw-bold text-secondary mb-1">등록된 일정이 없습니다.</h6>
-                      <p className="text-secondary small px-4 mb-0" style={{ opacity: 0.7 }}>
-                            {searchQuery.trim() !== '' || categoryFilter !== 'All' || completionFilter !== 'All' 
-                              ? '설정한 필터 조건에 부합하는 일정이 없습니다. 필터를 해제해보세요.' 
-                              : '상단 버튼으로 새 일정을 등록해보세요.'}
-                          </p>
-                        </div>
-                      ) : (
-                        <div className="d-flex flex-column gap-3">
-                          {mySchedules.map((schedule) => {
-                            const categoryClassMap: Record<ScheduleCategory, string> = {
-                              Work: 'badge-category-work',
-                              Personal: 'badge-category-personal',
-                              Important: 'badge-category-important',
-                              Meeting: 'badge-category-meeting',
-                              Etc: 'badge-category-etc',
-                            };
-
-                            const categoryTextMap: Record<ScheduleCategory, string> = {
-                              Work: '업무',
-                              Personal: '개인',
-                              Important: '중요',
-                              Meeting: '회의',
-                              Etc: '기타',
-                            };
-
-                            const isOverdue = new Date(schedule.endTime).getTime() < Date.now() && !schedule.isCompleted;
-
-                            return (
-                              <div 
-                                key={schedule.id}
-                                className="card border-0 p-3 rounded-4 transition-all position-relative overflow-hidden"
-                                style={{ 
-                                  transition: 'all 0.2s ease',
-                                  backgroundColor: schedule.isCompleted 
-                                    ? 'rgba(255, 255, 255, 0.02)' 
-                                    : 'rgba(255, 255, 255, 0.04)',
-                                  opacity: schedule.isCompleted ? 0.6 : 1,
-                                  border: '1px solid rgba(255, 255, 255, 0.05)',
-                                  borderLeft: `4px solid ${
-                                    schedule.isCompleted 
-                                      ? '#64748b' 
-                                      : isOverdue
-                                        ? '#f43f5e'
-                                        : '#6366f1'
-                                  }`,
-                                  boxShadow: schedule.isCompleted 
-                                    ? 'none'
-                                    : isOverdue
-                                      ? '0 0 15px rgba(244, 63, 94, 0.15)'
-                                      : '0 0 15px rgba(99, 102, 241, 0.15)'
-                                }}
-                              >
-                                <div className="d-flex align-items-start gap-3">
-                                  {/* Complete Checkbox Wrapper */}
-                                  <div className="pt-1">
-                                    <button
-                                      onClick={() => toggleComplete(schedule.id, schedule.isCompleted)}
-                                      className={`btn btn-sm rounded-circle d-flex align-items-center justify-content-center p-0 border`}
-                                      style={{ 
-                                        width: '26px', 
-                                        height: '26px',
-                                        backgroundColor: schedule.isCompleted ? '#10b981' : 'transparent',
-                                        borderColor: schedule.isCompleted ? '#10b981' : '#cbd5e1',
-                                        color: schedule.isCompleted ? 'white' : 'transparent'
-                                      }}
-                                      title={schedule.isCompleted ? "미완료 상태로 되돌리기" : "완료 표시하기"}
-                                    >
-                                      <i className="bi bi-check-lg fs-6"></i>
-                                    </button>
-                                  </div>
-
-                                  {/* Content Container */}
-                                  <div className="flex-grow-1">
-                                    <div className="d-flex align-items-center gap-2 mb-1 flex-wrap">
-                                      <span className={`badge badge-category ${categoryClassMap[schedule.category]}`}>
-                                        {categoryTextMap[schedule.category]}
-                                      </span>
-                                      
-                                      {(() => {
-                                        const dday = calculateDDay(schedule.startTime, schedule.endTime, schedule.isCompleted, schedule.hasTime);
-                                        return (
-                                          <span className={`badge rounded-pill py-0.5 px-2 ${dday.colorClass}`} style={{ fontSize: '0.65rem', fontWeight: 600 }}>
-                                            {dday.text}
-                                          </span>
-                                        );
-                                      })()}
-
-                                      {isOverdue && (
-                                        <span className="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill py-0.5 px-2" style={{ fontSize: '0.65rem', fontWeight: 600 }}>
-                                          <i className="bi bi-clock-history me-1"></i>기한 초과
-                                        </span>
-                                      )}
-                                    </div>
-
-                                    <h6 className={`fw-bold mb-1 ${schedule.isCompleted ? 'completed-text' : ''}`} style={{ fontSize: '1.05rem', color: schedule.isCompleted ? '#94a3b8' : '#ffffff' }}>
-                                      {renderHighlightedText(schedule.title, searchQuery)}
-                                    </h6>
-
-                                    {schedule.description && (
-                                      <p className="small mb-2" style={{ whiteSpace: 'pre-line', fontSize: '0.85rem', color: schedule.isCompleted ? '#64748b' : '#cbd5e1' }}>
-                                        {renderHighlightedText(schedule.description, searchQuery)}
-                                      </p>
-                                    )}
-
-                                    {/* Date Time Container */}
-                                    <div className="d-flex align-items-center gap-3 small" style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
-                                      <span className="d-flex align-items-center gap-1">
-                                        <i className="bi bi-calendar-event"></i>
-                                        {formatDateKST(schedule.startTime, schedule.hasTime)}
-                                      </span>
-                                      <span>→</span>
-                                      <span className="d-flex align-items-center gap-1">
-                                        <i className="bi bi-clock"></i>
-                                        {formatDateKST(schedule.endTime, schedule.hasTime)}
-                                      </span>
-                                    </div>
-                                  </div>
-
-                                  {/* Actions Panel */}
-                                  <div className="d-flex gap-1 align-self-start">
-                                    <button 
-                                      onClick={() => downloadScheduleIcs(schedule)} 
-                                      className="btn btn-sm rounded-3 transition-all d-flex align-items-center justify-content-center"
-                                      style={{
-                                        backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                                        border: '1px solid rgba(0, 240, 255, 0.25)',
-                                        color: 'var(--neon-cyan)',
-                                        boxShadow: '0 0 5px rgba(0, 240, 255, 0.1)',
-                                        width: '32px',
-                                        height: '32px'
-                                      }}
-                                      title="캘린더 내보내기 (iCal .ics 파일)"
-                                    >
-                                      <i className="bi bi-calendar-event"></i>
-                                    </button>
-                                    {!schedule.isCompleted && (
-                                      <button 
-                                        onClick={() => handleStartEdit(schedule)} 
-                                        className="btn btn-sm rounded-3 transition-all d-flex align-items-center justify-content-center"
-                                        style={{
-                                          backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                                          border: '1px solid rgba(255, 255, 255, 0.15)',
-                                          color: '#e2e8f0',
-                                          width: '32px',
-                                          height: '32px'
-                                        }}
-                                        title="일정 편집"
-                                      >
-                                        <i className="bi bi-pencil"></i>
-                                      </button>
-                                    )}
-                                    <button 
-                                      onClick={() => setDeleteConfirmTarget({ type: 'schedule', id: schedule.id })} 
-                                      className="btn btn-sm rounded-3 transition-all d-flex align-items-center justify-content-center"
-                                      style={{
-                                        backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                                        border: '1px solid rgba(255, 0, 127, 0.25)',
-                                        color: 'var(--neon-pink)',
-                                        boxShadow: '0 0 5px rgba(255, 0, 127, 0.1)',
-                                        width: '32px',
-                                        height: '32px'
-                                      }}
-                                      title="일정 삭제"
-                                    >
-                                      <i className="bi bi-trash"></i>
-                                    </button>
-                                  </div>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
-              </>
+              <ScheduleSection
+                briefing={getTodayBriefing()}
+                totalCount={totalCount}
+                completedCount={completedCount}
+                pendingCount={pendingCount}
+                importantCount={importantCount}
+                categoryFilter={categoryFilter}
+                setCategoryFilter={setCategoryFilter}
+                completionFilter={completionFilter}
+                setCompletionFilter={setCompletionFilter}
+                searchQuery={searchQuery}
+                setSearchQuery={setSearchQuery}
+                scheduleLoading={scheduleLoading}
+                mySchedules={mySchedules}
+                myRawSchedules={myRawSchedules}
+                calculateDDay={calculateDDay}
+                formatDateKST={formatDateKST}
+                renderHighlightedText={renderHighlightedText}
+                toggleComplete={toggleComplete}
+                handleStartEdit={handleStartEdit}
+                handleCancelEdit={handleCancelEdit}
+                setIsScheduleModalOpen={setIsScheduleModalOpen}
+                setDeleteConfirmTarget={setDeleteConfirmTarget}
+                downloadScheduleIcs={downloadScheduleIcs}
+              />
             )}
 
             {/* 2. 메모패드 (Memo Tab) */}
@@ -1861,7 +1731,7 @@ ${memo.content}`;
                           style={{ fontSize: '0.85rem' }}
                         >
                           <option value="All">🌈 전체</option>
-                          {pastelColors.map(c => (
+                          {pastelColorsData.map(c => (
                             <option key={c.hex} value={c.hex}>{c.name}</option>
                           ))}
                         </select>
@@ -1873,7 +1743,7 @@ ${memo.content}`;
                           onChange={(e) => handleFontChange(e.target.value)}
                           style={{ fontSize: '0.85rem' }}
                         >
-                          {fontOptions.map(font => (
+                          {fontOptionsData.map(font => (
                             <option key={font.value} value={font.value}>{font.name}</option>
                           ))}
                         </select>
@@ -1903,7 +1773,7 @@ ${memo.content}`;
                     ) : (
                       <div className="row g-3" style={{ minHeight: '300px' }}>
                         {filteredMemos.map((memo) => {
-                          const isDarkColor = checkIfDarkColor(memo.color || '#fffbeb');
+                          const isDarkColor = checkIfDarkColorUtil(memo.color || '#fffbeb');
                           return (
                             <div key={memo.id} className="col-md-6 col-xl-6">
                               <div
@@ -1912,9 +1782,9 @@ ${memo.content}`;
                                 style={{
                                   backgroundColor: 'rgba(10, 10, 20, 0.8)',
                                   color: '#e2e8f0',
-                                  border: `1px solid ${hexToRgba(memo.color || '#ff007f', 0.25)}`,
+                                  border: `1px solid ${hexToRgbaUtil(memo.color || '#ff007f', 0.25)}`,
                                   borderLeft: `5px solid ${memo.color || '#ff007f'}`,
-                                  boxShadow: `0 0 15px ${hexToRgba(memo.color || '#ff007f', 0.15)}, inset 0 0 10px ${hexToRgba(memo.color || '#ff007f', 0.05)}`,
+                                  boxShadow: `0 0 15px ${hexToRgbaUtil(memo.color || '#ff007f', 0.15)}, inset 0 0 10px ${hexToRgbaUtil(memo.color || '#ff007f', 0.05)}`,
                                   transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
                                   cursor: 'pointer'
                                 }}
@@ -1928,7 +1798,7 @@ ${memo.content}`;
                                         letterSpacing: '-0.3px', 
                                         maxWidth: '80%',
                                         color: '#ffffff',
-                                        fontFamily: getSelectedFontCss()
+                                        fontFamily: getSelectedFontCssUtil(selectedFont)
                                       }}
                                     >
                                       {memo.title}
@@ -2211,15 +2081,15 @@ ${memo.content}`;
               maxWidth: '650px',
               backgroundColor: 'rgba(15, 18, 36, 0.93)',
               color: '#f1f5f9',
-              border: `1px solid ${hexToRgba(selectedMemo.color || '#6366f1', 0.25)}`,
+              border: `1px solid ${hexToRgbaUtil(selectedMemo.color || '#6366f1', 0.25)}`,
               borderTop: `6px solid ${selectedMemo.color || '#6366f1'}`,
-              boxShadow: `0 0 30px ${hexToRgba(selectedMemo.color || '#6366f1', 0.25)}, 0 15px 50px rgba(0, 0, 0, 0.65), inset 0 0 15px ${hexToRgba(selectedMemo.color || '#6366f1', 0.08)}`,
-              fontFamily: getSelectedFontCss()
+              boxShadow: `0 0 30px ${hexToRgbaUtil(selectedMemo.color || '#6366f1', 0.25)}, 0 15px 50px rgba(0, 0, 0, 0.65), inset 0 0 15px ${hexToRgbaUtil(selectedMemo.color || '#6366f1', 0.08)}`,
+              fontFamily: getSelectedFontCssUtil(selectedFont)
             }}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
-            <div className="d-flex align-items-start justify-content-between mb-3 border-bottom pb-3" style={{ borderColor: hexToRgba(selectedMemo.color || '#6366f1', 0.18) }}>
+            <div className="d-flex align-items-start justify-content-between mb-3 border-bottom pb-3" style={{ borderColor: hexToRgbaUtil(selectedMemo.color || '#6366f1', 0.18) }}>
               <div>
                 <h4 className="fw-bold mb-1 display-font d-flex align-items-center gap-2" style={{ letterSpacing: '-0.3px', color: '#ffffff' }}>
                   {isMemoPinned(selectedMemo) && <i className="bi bi-pin-angle-fill" style={{ color: selectedMemo.color || '#6366f1', fontSize: '1.25rem' }}></i>}
@@ -2308,7 +2178,7 @@ ${memo.content}`;
             </div>
 
             {/* Modal Footer Controls */}
-            <div className="d-flex align-items-center justify-content-between border-top pt-3" style={{ borderColor: hexToRgba(selectedMemo.color || '#6366f1', 0.18) }}>
+            <div className="d-flex align-items-center justify-content-between border-top pt-3" style={{ borderColor: hexToRgbaUtil(selectedMemo.color || '#6366f1', 0.18) }}>
               <span 
                 className="badge px-3 py-2 rounded-pill fw-semibold" 
                 style={{ 
@@ -2634,497 +2504,57 @@ ${memo.content}`;
         </div>
       )}
 
-      {/* 팝업 모달로 동작하는 일정 등록/수정 창 */}
-      {isScheduleModalOpen && (
-        <div 
-          className="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center px-3"
-          style={{
-            zIndex: 10000,
-            backgroundColor: 'rgba(15, 23, 42, 0.65)',
-            backdropFilter: 'blur(12px)',
-            transition: 'all 0.3s ease-in-out'
-          }}
-          onClick={handleCancelEdit}
-        >
-          <div 
-            className="premium-card p-4 w-100 rounded-4 position-relative scale-in"
-            style={{
-              maxWidth: '500px',
-              backgroundColor: 'rgba(15, 18, 36, 0.95)',
-              color: '#cbd5e1',
-              border: `1px solid ${editingScheduleId ? 'rgba(245, 158, 11, 0.25)' : 'rgba(99, 102, 241, 0.25)'}`,
-              borderTop: `6px solid ${editingScheduleId ? '#f59e0b' : '#6366f1'}`,
-              boxShadow: `0 0 30px ${editingScheduleId ? 'rgba(245, 158, 11, 0.15)' : 'rgba(99, 102, 241, 0.15)'}, 0 20px 50px rgba(0, 0, 0, 0.6)`
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="d-flex align-items-center justify-content-between mb-4 border-bottom pb-2" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
-              <h5 className="fw-bold mb-0 d-flex align-items-center gap-2" style={{ color: '#ffffff' }}>
-                <i className={`bi ${editingScheduleId ? 'bi-pencil-square text-warning' : 'bi-plus-circle-fill text-primary'}`}></i>
-                {editingScheduleId ? '일정 수정하기' : '새로운 일정 등록'}
-              </h5>
-              <button 
-                onClick={handleCancelEdit}
-                className="btn btn-sm rounded-circle d-flex align-items-center justify-content-center border-0 p-2"
-                style={{ backgroundColor: 'rgba(255, 255, 255, 0.06)', width: '32px', height: '32px', color: '#94a3b8' }}
-              >
-                <i className="bi bi-x-lg"></i>
-              </button>
-            </div>
+      <ScheduleModalView
+        open={isScheduleModalOpen}
+        editingScheduleId={editingScheduleId}
+        title={title}
+        setTitle={setTitle}
+        description={description}
+        setDescription={setDescription}
+        hasTime={hasTime}
+        setHasTime={setHasTime}
+        startDate={startDate}
+        setStartDate={setStartDate}
+        startTimeVal={startTimeVal}
+        setStartTimeVal={setStartTimeVal}
+        endDate={endDate}
+        setEndDate={setEndDate}
+        endTimeVal={endTimeVal}
+        setEndTimeVal={setEndTimeVal}
+        category={category}
+        setCategory={setCategory}
+        onClose={handleCancelEdit}
+        onSubmit={handleSubmit}
+        onSaveOnly={handleSaveScheduleOnly}
+      />
 
-                      <p className="small text-muted mb-3">일정 등록과 수정은 큰 모달에서 처리되어, 목록 공간을 더 넓게 사용할 수 있습니다.</p>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          handleCancelEdit();
-                          setIsScheduleModalOpen(true);
-                        }}
-                        className="btn btn-premium-primary w-100 d-flex align-items-center justify-content-center gap-2"
-                        style={{ borderRadius: '10px' }}
-                      >
-                        <i className="bi bi-plus-circle-fill"></i>
-                        새 일정 등록
-                      </button>
-
-                      <form onSubmit={handleSubmit} className="d-none">
-              <div className="mb-3 text-start">
-                <label htmlFor="title" className="form-label small fw-semibold text-muted">일정 제목 *</label>
-                <input
-                  type="text"
-                  id="title"
-                  className="form-control form-premium-control"
-                  placeholder="예: Supabase 연동 개발 회의"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  required
-                />
-              </div>
-
-              <div className="mb-3 text-start">
-                <label htmlFor="description" className="form-label small fw-semibold text-muted">상세 설명</label>
-                <textarea
-                  id="description"
-                  className="form-control form-premium-control"
-                  rows={3}
-                  placeholder="구체적인 업무 내용 및 메모..."
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                />
-              </div>
-
-              <div className="form-check mb-3 text-start">
-                <input
-                  type="checkbox"
-                  className="form-check-input cursor-pointer"
-                  id="hasTime"
-                  checked={hasTime}
-                  onChange={(e) => setHasTime(e.target.checked)}
-                />
-                <label className="form-check-label small text-muted cursor-pointer" htmlFor="hasTime" style={{ userSelect: 'none' }}>
-                  ⏰ 시간 설정 활성화 (체크 해제 시 하루 종일 일정으로 등록)
-                </label>
-              </div>
-
-              <div className="row g-2 mb-3 text-start">
-                <div className="col-12 col-md-6">
-                  <label htmlFor="startDate" className="form-label small fw-semibold text-muted">시작 날짜 *</label>
-                  <input
-                    type="date"
-                    id="startDate"
-                    className="form-control form-premium-control"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                    required
-                  />
-                </div>
-                {hasTime && (
-                  <div className="col-12 col-md-6">
-                    <label htmlFor="startTimeVal" className="form-label small fw-semibold text-muted">시작 시간 *</label>
-                    <input
-                      type="time"
-                      id="startTimeVal"
-                      className="form-control form-premium-control"
-                      value={startTimeVal}
-                      onChange={(e) => setStartTimeVal(e.target.value)}
-                      required
-                    />
-                  </div>
-                )}
-              </div>
-
-              <div className="row g-2 mb-3 text-start">
-                <div className="col-12 col-md-6">
-                  <label htmlFor="endDate" className="form-label small fw-semibold text-muted">종료 날짜 *</label>
-                  <input
-                    type="date"
-                    id="endDate"
-                    className="form-control form-premium-control"
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                    required
-                  />
-                </div>
-                {hasTime && (
-                  <div className="col-12 col-md-6">
-                    <label htmlFor="endTimeVal" className="form-label small fw-semibold text-muted">종료 시간 *</label>
-                    <input
-                      type="time"
-                      id="endTimeVal"
-                      className="form-control form-premium-control"
-                      value={endTimeVal}
-                      onChange={(e) => setEndTimeVal(e.target.value)}
-                      required
-                    />
-                  </div>
-                )}
-              </div>
-
-              <div className="mb-4 text-start">
-                <label htmlFor="category" className="form-label small fw-semibold text-muted">카테고리</label>
-                <select
-                  id="category"
-                  className="form-select form-premium-control"
-                  value={category}
-                  onChange={(e) => setCategory(e.target.value as ScheduleCategory)}
-                >
-                  <option value="Work">🏢 업무 (Work)</option>
-                  <option value="Personal">🏡 개인 (Personal)</option>
-                  <option value="Important">⭐ 중요 (Important)</option>
-                  <option value="Meeting">👥 회의 (Meeting)</option>
-                  <option value="Etc">🏷️ 기타 (Etc)</option>
-                </select>
-              </div>
-
-              <div className="d-flex gap-3 align-items-center w-100" style={{ maxWidth: '500px', margin: '0 auto' }}>
-                <button 
-                  type="button" 
-                  onClick={handleCancelEdit} 
-                  className="btn d-flex align-items-center justify-content-center gap-2 px-4 py-3 fw-bold transition-all" 
-                  style={{ 
-                    borderRadius: '14px',
-                    flex: '1',
-                    background: 'rgba(241, 245, 249, 0.9)',
-                    border: '1px solid rgba(226, 232, 240, 0.8)',
-                    color: '#475569',
-                    fontSize: '0.95rem',
-                    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.02)',
-                    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
-                  }}
-                  onMouseOver={(e) => {
-                    e.currentTarget.style.background = '#e2e8f0';
-                    e.currentTarget.style.transform = 'translateY(-2px)';
-                    e.currentTarget.style.boxShadow = '0 6px 12px rgba(0, 0, 0, 0.05)';
-                  }}
-                  onMouseOut={(e) => {
-                    e.currentTarget.style.background = 'rgba(241, 245, 249, 0.9)';
-                    e.currentTarget.style.transform = 'translateY(0)';
-                    e.currentTarget.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.02)';
-                  }}
-                  onMouseDown={(e) => {
-                    e.currentTarget.style.transform = 'translateY(0) scale(0.97)';
-                  }}
-                >
-                  <i className="bi bi-arrow-left-circle-fill fs-5"></i>
-                  <span>취소</span>
-                </button>
-
-                {editingScheduleId && (
-                  <button 
-                    type="button" 
-                    onClick={handleSaveScheduleOnly} 
-                    className="btn d-flex align-items-center justify-content-center gap-2 px-4 py-3 fw-bold text-white transition-all animate-fade-in" 
-                    style={{ 
-                      borderRadius: '14px',
-                      flex: '1',
-                      background: 'linear-gradient(135deg, #34d399, #10b981)',
-                      border: 'none',
-                      fontSize: '0.95rem',
-                      boxShadow: '0 8px 20px rgba(16, 185, 129, 0.2)',
-                      transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
-                    }}
-                    onMouseOver={(e) => {
-                      e.currentTarget.style.background = 'linear-gradient(135deg, #10b981, #059669)';
-                      e.currentTarget.style.transform = 'translateY(-2px)';
-                      e.currentTarget.style.boxShadow = '0 10px 24px rgba(16, 185, 129, 0.35)';
-                    }}
-                    onMouseOut={(e) => {
-                      e.currentTarget.style.background = 'linear-gradient(135deg, #34d399, #10b981)';
-                      e.currentTarget.style.transform = 'translateY(0)';
-                      e.currentTarget.style.boxShadow = '0 8px 20px rgba(16, 185, 129, 0.2)';
-                    }}
-                    onMouseDown={(e) => {
-                      e.currentTarget.style.transform = 'translateY(0) scale(0.97)';
-                    }}
-                  >
-                    <i className="bi bi-save-fill fs-5"></i>
-                    <span>임시 저장</span>
-                  </button>
-                )}
-
-                <button 
-                  type="submit" 
-                  className="btn d-flex align-items-center justify-content-center gap-2 py-3 fw-bold text-white transition-all" 
-                  style={{ 
-                    borderRadius: '14px',
-                    flex: '2',
-                    background: editingScheduleId ? 'linear-gradient(135deg, #fbbf24, #f59e0b)' : 'linear-gradient(135deg, #6366f1, #3b82f6)',
-                    color: editingScheduleId ? '#1e293b' : '#ffffff',
-                    border: 'none',
-                    fontSize: '0.95rem',
-                    boxShadow: editingScheduleId ? '0 8px 20px rgba(245, 158, 11, 0.2)' : '0 8px 20px rgba(59, 130, 246, 0.25)',
-                    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
-                  }}
-                  onMouseOver={(e) => {
-                    e.currentTarget.style.background = editingScheduleId ? 'linear-gradient(135deg, #f59e0b, #d97706)' : 'linear-gradient(135deg, #4f46e5, #2563eb)';
-                    e.currentTarget.style.transform = 'translateY(-2px)';
-                    e.currentTarget.style.boxShadow = editingScheduleId ? '0 10px 24px rgba(245, 158, 11, 0.35)' : '0 10px 24px rgba(59, 130, 246, 0.4)';
-                  }}
-                  onMouseOut={(e) => {
-                    e.currentTarget.style.background = editingScheduleId ? 'linear-gradient(135deg, #fbbf24, #f59e0b)' : 'linear-gradient(135deg, #6366f1, #3b82f6)';
-                    e.currentTarget.style.transform = 'translateY(0)';
-                    e.currentTarget.style.boxShadow = editingScheduleId ? '0 8px 20px rgba(245, 158, 11, 0.2)' : '0 8px 20px rgba(59, 130, 246, 0.25)';
-                  }}
-                  onMouseDown={(e) => {
-                    e.currentTarget.style.transform = 'translateY(0) scale(0.97)';
-                  }}
-                >
-                  <i className="bi bi-check-circle-fill fs-5"></i>
-                  <span>{editingScheduleId ? '수정 완료' : '일정 등록'}</span>
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* 팝업 모달로 동작하는 메모 등록/수정 창 (풀스크린화) */}
-      {isMemoModalOpen && (
-        <div 
-          className="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-stretch justify-content-stretch"
-          style={{
-            zIndex: 10000,
-            backgroundColor: 'rgba(15, 23, 42, 0.65)',
-            backdropFilter: 'blur(12px)',
-            transition: 'all 0.3s ease-in-out'
-          }}
-          onClick={handleCancelMemoEdit}
-        >
-          <div 
-            className="w-100 h-100 border-0 position-relative scale-in d-flex flex-column"
-            style={{
-              backgroundColor: 'rgba(11, 13, 26, 0.97)',
-              color: '#cbd5e1',
-              borderTop: `6px solid ${editingMemoId ? '#f59e0b' : '#6366f1'}`,
-              boxShadow: `0 0 35px ${editingMemoId ? 'rgba(245, 158, 11, 0.2)' : 'rgba(99, 102, 241, 0.2)'}`,
-              borderRadius: 0,
-              padding: '2.5rem'
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="d-flex align-items-center justify-content-between mb-4 border-bottom pb-2" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
-              <h5 className="fw-bold mb-0 h4 d-flex align-items-center gap-2" style={{ color: '#ffffff' }}>
-                <i className={`bi ${editingMemoId ? 'bi-sticky text-warning' : 'bi-sticky-fill text-primary'}`}></i>
-                {editingMemoId ? '메모 수정하기' : '새로운 메모 등록'}
-              </h5>
-              <button 
-                onClick={handleCancelMemoEdit}
-                className="btn btn-sm rounded-circle d-flex align-items-center justify-content-center border-0 p-2"
-                style={{ backgroundColor: 'rgba(255, 255, 255, 0.06)', width: '36px', height: '36px', color: '#94a3b8' }}
-              >
-                <i className="bi bi-x-lg fs-5"></i>
-              </button>
-            </div>
-
-            <form onSubmit={handleMemoSubmit} className="d-flex flex-column flex-grow-1">
-              <div className="mb-3 text-start">
-                <label htmlFor="memoTitle" className="form-label small fw-semibold text-muted">메모 제목 *</label>
-                <input
-                  type="text"
-                  id="memoTitle"
-                  className="form-control form-premium-control fs-4 py-2"
-                  placeholder="예: 아이디어 영감 기록"
-                  value={memoTitle}
-                  onChange={(e) => setMemoTitle(e.target.value)}
-                  required
-                  style={{ fontFamily: getSelectedFontCss() }}
-                />
-              </div>
-
-              <div className="mb-3 text-start d-flex flex-column flex-grow-1 position-relative">
-                <label htmlFor="memoContent" className="form-label small fw-semibold text-muted">메모 내용 *</label>
-                <textarea
-                  id="memoContent"
-                  className="form-control form-premium-control flex-grow-1"
-                  placeholder="자유롭게 생각을 기록해 보세요... (/checkbox 입력 시 체크박스로 자동 변환)"
-                  value={memoContent}
-                  onChange={(e) => handleMemoContentChange(e.target.value, e.target.selectionStart ?? e.target.value.length)}
-                  onKeyDown={handleMemoContentKeyDown}
-                  required
-                  style={{ 
-                    fontFamily: getSelectedFontCss(),
-                    resize: 'none',
-                    minHeight: '45vh'
-                  }}
-                />
-                {slashSuggestions.length > 0 && (
-                  <div
-                    className="position-absolute start-0 w-100 rounded-3 shadow-lg border overflow-hidden"
-                    style={{
-                      zIndex: 10,
-                      backgroundColor: 'rgba(11, 13, 26, 0.98)',
-                      borderColor: 'rgba(255,255,255,0.12)',
-                      top: 'calc(100% + 0.5rem)'
-                    }}
-                  >
-                    {slashSuggestions.map((item, index) => (
-                      <button
-                        key={item.label}
-                        type="button"
-                        onMouseDown={(e) => e.preventDefault()}
-                        onClick={() => insertSlashCommand(item.insert)}
-                        className="w-100 text-start border-0 px-3 py-2 d-flex align-items-center justify-content-between"
-                        style={{
-                          backgroundColor: index === selectedSlashSuggestionIndex ? 'rgba(99, 102, 241, 0.25)' : 'transparent',
-                          color: '#e2e8f0'
-                        }}
-                      >
-                        <span className="fw-semibold">{item.label}</span>
-                        <span className="small text-muted">{item.insert.trim()}</span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              <div className="mb-4 text-start">
-                <label className="form-label small fw-semibold text-muted d-block">메모 카드 테마 색상</label>
-                <div className="d-flex flex-wrap gap-2 mt-1">
-                  {pastelColors.map((color) => (
-                    <button
-                      key={color.hex}
-                      type="button"
-                      onClick={() => setMemoColor(color.hex)}
-                      className="rounded-circle border-0 transition-all d-flex align-items-center justify-content-center shadow-sm"
-                      style={{
-                        width: '32px',
-                        height: '32px',
-                        backgroundColor: color.hex,
-                        transform: memoColor === color.hex ? 'scale(1.2)' : 'scale(1)',
-                        border: memoColor === color.hex ? '2px solid #000' : 'none',
-                        boxShadow: memoColor === color.hex ? '0 0 8px rgba(0,0,0,0.3)' : 'none',
-                        transition: 'all 0.15s ease'
-                      }}
-                      title={color.name}
-                    >
-                      {memoColor === color.hex && (
-                        <i className={`bi bi-check-lg ${checkIfDarkColor(color.hex) ? 'text-white' : 'text-dark'}`} style={{ fontSize: '0.8rem' }}></i>
-                      )}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="d-flex gap-3 mt-auto align-items-center w-100" style={{ maxWidth: '650px', margin: '0 auto' }}>
-                <button 
-                  type="button" 
-                  onClick={handleCancelMemoEdit} 
-                  className="btn d-flex align-items-center justify-content-center gap-2 px-4 py-3 fw-bold transition-all" 
-                  style={{ 
-                    borderRadius: '14px',
-                    flex: '1',
-                    background: 'rgba(241, 245, 249, 0.9)',
-                    border: '1px solid rgba(226, 232, 240, 0.8)',
-                    color: '#475569',
-                    fontSize: '0.95rem',
-                    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.02)',
-                    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
-                  }}
-                  onMouseOver={(e) => {
-                    e.currentTarget.style.background = '#e2e8f0';
-                    e.currentTarget.style.transform = 'translateY(-2px)';
-                    e.currentTarget.style.boxShadow = '0 6px 12px rgba(0, 0, 0, 0.05)';
-                  }}
-                  onMouseOut={(e) => {
-                    e.currentTarget.style.background = 'rgba(241, 245, 249, 0.9)';
-                    e.currentTarget.style.transform = 'translateY(0)';
-                    e.currentTarget.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.02)';
-                  }}
-                  onMouseDown={(e) => {
-                    e.currentTarget.style.transform = 'translateY(0) scale(0.97)';
-                  }}
-                >
-                  <i className="bi bi-arrow-left-circle-fill fs-5"></i>
-                  <span>취소</span>
-                </button>
-
-                {editingMemoId && (
-                  <button 
-                    type="button" 
-                    onClick={handleSaveMemoOnly} 
-                    className="btn d-flex align-items-center justify-content-center gap-2 px-4 py-3 fw-bold text-white transition-all animate-fade-in" 
-                    style={{ 
-                      borderRadius: '14px',
-                      flex: '1',
-                      background: 'linear-gradient(135deg, #34d399, #10b981)',
-                      border: 'none',
-                      fontSize: '0.95rem',
-                      boxShadow: '0 8px 20px rgba(16, 185, 129, 0.2)',
-                      transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
-                    }}
-                    onMouseOver={(e) => {
-                      e.currentTarget.style.background = 'linear-gradient(135deg, #10b981, #059669)';
-                      e.currentTarget.style.transform = 'translateY(-2px)';
-                      e.currentTarget.style.boxShadow = '0 10px 24px rgba(16, 185, 129, 0.35)';
-                    }}
-                    onMouseOut={(e) => {
-                      e.currentTarget.style.background = 'linear-gradient(135deg, #34d399, #10b981)';
-                      e.currentTarget.style.transform = 'translateY(0)';
-                      e.currentTarget.style.boxShadow = '0 8px 20px rgba(16, 185, 129, 0.2)';
-                    }}
-                    onMouseDown={(e) => {
-                      e.currentTarget.style.transform = 'translateY(0) scale(0.97)';
-                    }}
-                  >
-                    <i className="bi bi-save-fill fs-5"></i>
-                    <span>임시 저장</span>
-                  </button>
-                )}
-
-                <button 
-                  type="submit" 
-                  className="btn d-flex align-items-center justify-content-center gap-2 py-3 fw-bold text-white transition-all" 
-                  style={{ 
-                    borderRadius: '14px',
-                    flex: '2',
-                    background: editingMemoId ? 'linear-gradient(135deg, #fbbf24, #f59e0b)' : 'linear-gradient(135deg, #6366f1, #3b82f6)',
-                    color: editingMemoId ? '#1e293b' : '#ffffff',
-                    border: 'none',
-                    fontSize: '0.95rem',
-                    boxShadow: editingMemoId ? '0 8px 20px rgba(245, 158, 11, 0.2)' : '0 8px 20px rgba(59, 130, 246, 0.25)',
-                    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
-                  }}
-                  onMouseOver={(e) => {
-                    e.currentTarget.style.background = editingMemoId ? 'linear-gradient(135deg, #f59e0b, #d97706)' : 'linear-gradient(135deg, #4f46e5, #2563eb)';
-                    e.currentTarget.style.transform = 'translateY(-2px)';
-                    e.currentTarget.style.boxShadow = editingMemoId ? '0 10px 24px rgba(245, 158, 11, 0.35)' : '0 10px 24px rgba(59, 130, 246, 0.4)';
-                  }}
-                  onMouseOut={(e) => {
-                    e.currentTarget.style.background = editingMemoId ? 'linear-gradient(135deg, #fbbf24, #f59e0b)' : 'linear-gradient(135deg, #6366f1, #3b82f6)';
-                    e.currentTarget.style.transform = 'translateY(0)';
-                    e.currentTarget.style.boxShadow = editingMemoId ? '0 8px 20px rgba(245, 158, 11, 0.2)' : '0 8px 20px rgba(59, 130, 246, 0.25)';
-                  }}
-                  onMouseDown={(e) => {
-                    e.currentTarget.style.transform = 'translateY(0) scale(0.97)';
-                  }}
-                >
-                  <i className="bi bi-check-circle-fill fs-5"></i>
-                  <span>{editingMemoId ? '수정 완료' : '메모 등록'}</span>
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <MemoModalView
+        open={isMemoModalOpen}
+        editingMemoId={editingMemoId}
+        memoTitle={memoTitle}
+        setMemoTitle={setMemoTitle}
+        memoContent={memoContent}
+        setMemoContent={(value) => handleMemoContentChange(value, value.length)}
+        memoColor={memoColor}
+        setMemoColor={setMemoColor}
+        selectedFont={selectedFont}
+        handleFontChange={handleFontChange}
+        memoSuggestionsVisible={slashSuggestions.length > 0}
+        selectedSlashSuggestionIndex={selectedSlashSuggestionIndex}
+        slashSuggestions={slashSuggestions}
+        insertSlashCommand={insertSlashCommand}
+        onClose={handleCancelMemoEdit}
+        onSubmit={handleMemoSubmit}
+        onSaveOnly={handleSaveMemoOnly}
+        handleCancelMemoEdit={handleCancelMemoEdit}
+        pastelColors={pastelColorsData}
+        fontOptions={fontOptionsData}
+        checkIfDarkColor={checkIfDarkColorUtil}
+        memoError={memoError}
+        getSelectedFontCss={getSelectedFontCssUtil}
+        handleMemoContentChange={handleMemoContentChange}
+        handleMemoContentKeyDown={handleMemoContentKeyDown}
+      />
 
       {/* 회원 탈퇴 확인 모달 (Danger Zone Glassmorphic) */}
       {isDeleteAccountModalOpen && (
