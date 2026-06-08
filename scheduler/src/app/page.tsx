@@ -10,6 +10,10 @@ import { MarkdownRenderer } from '../components/MarkdownRenderer';
 import { ScheduleSection } from '../components/ScheduleSection';
 import { MemoSection } from '../components/MemoSection';
 import { ProfileSection } from '../components/ProfileSection';
+import { MemoDetailModal } from '../components/MemoDetailModal';
+import { DeleteConfirmModal } from '../components/DeleteConfirmModal';
+import { PomodoroWidget } from '../components/PomodoroWidget';
+import { ToastMessage } from '../components/ToastMessage';
 import { ScheduleModal as ScheduleModalView } from '../components/ScheduleModal';
 import { MemoModal as MemoModalView } from '../components/MemoModal';
 import {
@@ -1727,446 +1731,66 @@ ${memo.content}`;
         )}
       </div>
 
-      {/* Glassmorphic Memo Detail Popup Modal */}
       {selectedMemo && (
-        <div 
-          className="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center px-3"
-          style={{
-            zIndex: 9999,
-            backgroundColor: 'rgba(8, 10, 20, 0.75)',
-            backdropFilter: 'blur(16px)',
-            transition: 'all 0.3s ease-in-out'
+        <MemoDetailModal
+          memo={selectedMemo}
+          selectedFont={selectedFont}
+          closeHovered={closeHovered}
+          setCloseHovered={setCloseHovered}
+          hoveredAction={hoveredAction}
+          setHoveredAction={setHoveredAction}
+          onClose={() => setSelectedMemo(null)}
+          onCopy={() => copyMemoMarkdown(selectedMemo)}
+          onEdit={() => {
+            handleStartMemoEdit(selectedMemo);
+            setSelectedMemo(null);
           }}
-          onClick={() => setSelectedMemo(null)}
-        >
-          <div 
-            className="premium-card p-4 w-100 rounded-4 position-relative scale-in"
-            style={{
-              maxWidth: '650px',
-              backgroundColor: 'rgba(15, 18, 36, 0.93)',
-              color: '#f1f5f9',
-              border: `1px solid ${hexToRgbaUtil(selectedMemo.color || '#6366f1', 0.25)}`,
-              borderTop: `6px solid ${selectedMemo.color || '#6366f1'}`,
-              boxShadow: `0 0 30px ${hexToRgbaUtil(selectedMemo.color || '#6366f1', 0.25)}, 0 15px 50px rgba(0, 0, 0, 0.65), inset 0 0 15px ${hexToRgbaUtil(selectedMemo.color || '#6366f1', 0.08)}`,
-              fontFamily: getSelectedFontCssUtil(selectedFont)
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Modal Header */}
-            <div className="d-flex align-items-start justify-content-between mb-3 border-bottom pb-3" style={{ borderColor: hexToRgbaUtil(selectedMemo.color || '#6366f1', 0.18) }}>
-              <div>
-                <h4 className="fw-bold mb-1 display-font d-flex align-items-center gap-2" style={{ letterSpacing: '-0.3px', color: '#ffffff' }}>
-                  {isMemoPinned(selectedMemo) && <i className="bi bi-pin-angle-fill" style={{ color: selectedMemo.color || '#6366f1', fontSize: '1.25rem' }}></i>}
-                  {getCleanMemoTitle(selectedMemo.title)}
-                </h4>
-                <div className="d-flex flex-wrap align-items-center gap-2 mt-1" style={{ opacity: 0.85 }}>
-                  <small style={{ fontSize: '0.75rem', color: '#94a3b8' }} className="d-flex align-items-center gap-1">
-                    <i className="bi bi-clock-history"></i>
-                    {formatDateKST(selectedMemo.createdAt, true)} 작성됨
-                  </small>
-                  {(() => {
-                    const stats = getMemoStats(selectedMemo.content || '');
-                    return (
-                      <span 
-                        className="badge py-1 px-2 border" 
-                        style={{ 
-                          fontSize: '0.65rem',
-                          backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                          color: '#94a3b8',
-                          borderColor: 'rgba(255, 255, 255, 0.08)'
-                        }}
-                      >
-                        공백제외: {stats.charCountWithoutSpace}자 / 예상리딩: {stats.readingTimeMins}분
-                      </span>
-                    );
-                  })()}
-                </div>
-              </div>
-              
-              <button 
-                onClick={() => setSelectedMemo(null)}
-                onMouseEnter={() => setCloseHovered(true)}
-                onMouseLeave={() => setCloseHovered(false)}
-                className="btn btn-sm rounded-circle d-flex align-items-center justify-content-center"
-                style={{ 
-                  backgroundColor: closeHovered ? 'rgba(239, 68, 68, 0.2)' : 'rgba(255, 255, 255, 0.06)',
-                  color: closeHovered ? '#f87171' : '#94a3b8',
-                  width: '32px',
-                  height: '32px',
-                  border: `1px solid ${closeHovered ? 'rgba(239, 68, 68, 0.4)' : 'rgba(255, 255, 255, 0.1)'}`,
-                  boxShadow: closeHovered ? '0 0 10px rgba(239, 68, 68, 0.4)' : 'none',
-                  transition: 'all 0.2s ease-in-out',
-                  cursor: 'pointer'
-                }}
-                title="닫기"
-              >
-                <i className="bi bi-x-lg fs-6"></i>
-              </button>
-            </div>
-
-            {/* Modal Body (Scrollable Markdown Contents) */}
-            <div 
-              className="py-2 mb-4 scrollbar-premium text-start" 
-              style={{ 
-                maxHeight: '400px', 
-                overflowY: 'auto',
-                lineHeight: '1.6',
-                fontSize: '0.95rem'
-              }}
-            >
-              <MarkdownRenderer 
-                content={selectedMemo.content} 
-                isDarkColor={true} 
-                onTodoToggle={async (lineIndex) => {
-                  const lines = (selectedMemo.content || '').split('\n');
-                  if (lines[lineIndex] !== undefined) {
-                    const line = lines[lineIndex];
-                    if (line.match(/^(\s*[-*]\s+\[)\s(\].*)$/)) {
-                      lines[lineIndex] = line.replace(/^(\s*[-*]\s+\[)\s(\].*)$/, '$1x$2');
-                    } else if (line.match(/^(\s*[-*]\s+\[)[xX](\].*)$/)) {
-                      lines[lineIndex] = line.replace(/^(\s*[-*]\s+\[)[xX](\].*)$/, '$1 $2');
-                    }
-                    const newContent = lines.join('\n');
-                    await editMemo(selectedMemo.id, {
-                      title: selectedMemo.title,
-                      content: newContent,
-                      color: selectedMemo.color
-                    });
-                    setSelectedMemo({
-                      ...selectedMemo,
-                      content: newContent
-                    });
-                  }
-                }}
-              />
-            </div>
-
-            {/* Modal Footer Controls */}
-            <div className="d-flex align-items-center justify-content-between border-top pt-3" style={{ borderColor: hexToRgbaUtil(selectedMemo.color || '#6366f1', 0.18) }}>
-              <span 
-                className="badge px-3 py-2 rounded-pill fw-semibold" 
-                style={{ 
-                  backgroundColor: 'rgba(255, 255, 255, 0.05)', 
-                  color: '#94a3b8', 
-                  border: '1px solid rgba(255, 255, 255, 0.08)',
-                  fontSize: '0.75rem' 
-                }}
-              >
-                ✏️ Premium View Mode
-              </span>
-              
-              <div className="d-flex gap-2">
-                <button
-                  onClick={() => {
-                    copyMemoMarkdown(selectedMemo);
-                  }}
-                  onMouseEnter={() => setHoveredAction('copy')}
-                  onMouseLeave={() => setHoveredAction(null)}
-                  className="btn btn-sm px-3 py-2 rounded-3 fw-bold d-flex align-items-center gap-1"
-                  style={{
-                    background: hoveredAction === 'copy'
-                      ? 'linear-gradient(135deg, #2dd4bf, #0ea5e9)'
-                      : 'linear-gradient(135deg, rgba(45, 212, 191, 0.08), rgba(14, 165, 233, 0.08))',
-                    color: hoveredAction === 'copy' ? '#ffffff' : '#2dd4bf',
-                    border: '1px solid rgba(45, 212, 191, 0.4)',
-                    boxShadow: hoveredAction === 'copy' ? '0 0 15px rgba(45, 212, 191, 0.5)' : 'none',
-                    fontSize: '0.8rem',
-                    transform: hoveredAction === 'copy' ? 'translateY(-1px)' : 'none',
-                    transition: 'all 0.2s ease-in-out',
-                    cursor: 'pointer'
-                  }}
-                  title="마크다운 복사"
-                >
-                  <i className="bi bi-share-fill"></i> 복사
-                </button>
-                <button
-                  onClick={() => {
-                    handleStartMemoEdit(selectedMemo);
-                    setSelectedMemo(null);
-                  }}
-                  onMouseEnter={() => setHoveredAction('edit')}
-                  onMouseLeave={() => setHoveredAction(null)}
-                  className="btn btn-sm px-3 py-2 rounded-3 fw-bold d-flex align-items-center gap-1"
-                  style={{
-                    background: hoveredAction === 'edit'
-                      ? 'linear-gradient(135deg, #6366f1, #a855f7)'
-                      : 'linear-gradient(135deg, rgba(99, 102, 241, 0.08), rgba(168, 85, 247, 0.08))',
-                    color: hoveredAction === 'edit' ? '#ffffff' : '#818cf8',
-                    border: '1px solid rgba(99, 102, 241, 0.4)',
-                    boxShadow: hoveredAction === 'edit' ? '0 0 15px rgba(99, 102, 241, 0.5)' : 'none',
-                    fontSize: '0.8rem',
-                    transform: hoveredAction === 'edit' ? 'translateY(-1px)' : 'none',
-                    transition: 'all 0.2s ease-in-out',
-                    cursor: 'pointer'
-                  }}
-                >
-                  <i className="bi bi-pencil-fill"></i> 수정하기
-                </button>
-                <button
-                  onClick={() => {
-                    setDeleteConfirmTarget({ type: 'memo', id: selectedMemo.id });
-                    setSelectedMemo(null);
-                  }}
-                  onMouseEnter={() => setHoveredAction('delete')}
-                  onMouseLeave={() => setHoveredAction(null)}
-                  className="btn btn-sm px-3 py-2 rounded-3 fw-bold text-white d-flex align-items-center gap-1"
-                  style={{
-                    background: hoveredAction === 'delete'
-                      ? 'linear-gradient(135deg, #f43f5e, #e11d48)'
-                      : 'linear-gradient(135deg, rgba(244, 63, 94, 0.08), rgba(225, 29, 72, 0.08))',
-                    color: hoveredAction === 'delete' ? '#ffffff' : '#f43f5e',
-                    border: '1px solid rgba(244, 63, 94, 0.4)',
-                    boxShadow: hoveredAction === 'delete' ? '0 0 15px rgba(244, 63, 94, 0.5)' : 'none',
-                    fontSize: '0.8rem',
-                    transform: hoveredAction === 'delete' ? 'translateY(-1px)' : 'none',
-                    transition: 'all 0.2s ease-in-out',
-                    cursor: 'pointer'
-                  }}
-                >
-                  <i className="bi bi-trash-fill"></i> 삭제하기
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+          onDelete={() => {
+            setDeleteConfirmTarget({ type: 'memo', id: selectedMemo.id });
+            setSelectedMemo(null);
+          }}
+          onTodoToggle={async (lineIndex) => {
+            const lines = (selectedMemo.content || '').split('\n');
+            if (lines[lineIndex] !== undefined) {
+              const line = lines[lineIndex];
+              if (line.match(/^(\s*[-*]\s+\[)\s(\].*)$/)) {
+                lines[lineIndex] = line.replace(/^(\s*[-*]\s+\[)\s(\].*)$/, '$1x$2');
+              } else if (line.match(/^(\s*[-*]\s+\[)[xX](\].*)$/)) {
+                lines[lineIndex] = line.replace(/^(\s*[-*]\s+\[)[xX](\].*)$/, '$1 $2');
+              }
+              const newContent = lines.join('\n');
+              await editMemo(selectedMemo.id, { title: selectedMemo.title, content: newContent, color: selectedMemo.color });
+              setSelectedMemo({ ...selectedMemo, content: newContent });
+            }
+          }}
+          isMemoPinned={isMemoPinned}
+          getCleanMemoTitle={getCleanMemoTitle}
+          getMemoStats={getMemoStats}
+          formatDateKST={formatDateKST}
+        />
       )}
 
-      {/* Pomodoro Timer Floating Widget */}
-      <div 
-        className="position-fixed bottom-4 end-4 text-end"
-        style={{ zIndex: 9999, bottom: '24px', right: '24px' }}
-      >
-        {!showPomodoroWidget ? (
-          <button
-            onClick={() => setShowPomodoroWidget(true)}
-            className="btn btn-primary rounded-circle shadow-lg d-flex align-items-center justify-content-center p-0 border-0"
-            style={{
-              width: '60px',
-              height: '60px',
-              background: 'linear-gradient(135deg, #ff6b6b, #ff8787)',
-              boxShadow: '0 8px 24px rgba(255, 107, 107, 0.4)',
-              transition: 'all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
-            }}
-            title="뽀모도로 집중 타이머 열기"
-          >
-            <i className="bi bi-hourglass-split text-white fs-4"></i>
-            {pomodoroIsRunning && (
-              <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger border border-light" style={{ fontSize: '0.65rem' }}>
-                ON
-              </span>
-            )}
-          </button>
-        ) : (
-          <div 
-            className="premium-card p-3 rounded-4 shadow-lg text-start border-0 animate-scale-up"
-            style={{
-              width: '300px',
-              backgroundColor: 'rgba(255, 255, 255, 0.95)',
-              backdropFilter: 'blur(20px)',
-              color: '#2b2d42',
-              boxShadow: '0 20px 50px rgba(0,0,0,0.15)',
-              border: '1px solid rgba(255, 255, 255, 0.5)'
-            }}
-          >
-            <div className="d-flex align-items-center justify-content-between border-bottom pb-2 mb-2" style={{ borderColor: 'rgba(0,0,0,0.06)' }}>
-              <h6 className="fw-bold m-0 d-flex align-items-center gap-2 text-primary">
-                🍅 뽀모도로 타이머
-              </h6>
-              <button 
-                onClick={() => setShowPomodoroWidget(false)}
-                className="btn btn-sm rounded-circle p-0 border-0 d-flex align-items-center justify-content-center"
-                style={{ backgroundColor: 'rgba(0,0,0,0.05)', width: '24px', height: '24px' }}
-              >
-                <i className="bi bi-dash fs-6"></i>
-              </button>
-            </div>
+      <PomodoroWidget
+        show={showPomodoroWidget}
+        isRunning={pomodoroIsRunning}
+        seconds={pomodoroSeconds}
+        mode={pomodoroMode}
+        customFocus={pomodoroCustomFocus}
+        customBreak={pomodoroCustomBreak}
+        onOpen={() => setShowPomodoroWidget(true)}
+        onClose={() => setShowPomodoroWidget(false)}
+        onToggle={() => setPomodoroIsRunning(!pomodoroIsRunning)}
+        onReset={() => { setPomodoroIsRunning(false); setPomodoroSeconds(pomodoroMode === 'focus' ? pomodoroCustomFocus * 60 : pomodoroCustomBreak * 60); }}
+        onFocusChange={(value) => { setPomodoroCustomFocus(value); if (pomodoroMode === 'focus' && !pomodoroIsRunning) setPomodoroSeconds(value * 60); }}
+        onBreakChange={(value) => { setPomodoroCustomBreak(value); if (pomodoroMode === 'break' && !pomodoroIsRunning) setPomodoroSeconds(value * 60); }}
+      />
 
-            <div className="text-center py-3">
-              <div className="display-4 fw-bold display-font text-dark mb-1" style={{ fontSize: '2.5rem' }}>
-                {Math.floor(pomodoroSeconds / 60).toString().padStart(2, '0')}:
-                {(pomodoroSeconds % 60).toString().padStart(2, '0')}
-              </div>
-              <span className={`badge px-2 py-1 rounded-pill ${pomodoroMode === 'focus' ? 'bg-danger-subtle text-danger border border-danger-subtle' : 'bg-success-subtle text-success border border-success-subtle'}`} style={{ fontSize: '0.75rem' }}>
-                {pomodoroMode === 'focus' ? '🎯 집중 모드' : '🌿 휴식 모드'}
-              </span>
-            </div>
-
-            {/* Controls */}
-            <div className="d-flex align-items-center justify-content-center gap-2 mb-3">
-              <button
-                onClick={() => setPomodoroIsRunning(!pomodoroIsRunning)}
-                className={`btn btn-sm px-3 py-1.5 rounded-pill fw-bold text-white d-flex align-items-center gap-1 border-0 ${pomodoroIsRunning ? 'bg-warning' : 'bg-primary'}`}
-                style={{ fontSize: '0.8rem' }}
-              >
-                <i className={`bi ${pomodoroIsRunning ? 'bi-pause-fill' : 'bi-play-fill'}`}></i>
-                {pomodoroIsRunning ? '일시정지' : '시작'}
-              </button>
-              <button
-                onClick={() => {
-                  setPomodoroIsRunning(false);
-                  setPomodoroSeconds(pomodoroMode === 'focus' ? pomodoroCustomFocus * 60 : pomodoroCustomBreak * 60);
-                }}
-                className="btn btn-sm btn-outline-secondary px-3 py-1.5 rounded-pill fw-bold d-flex align-items-center gap-1"
-                style={{ fontSize: '0.8rem' }}
-              >
-                <i className="bi bi-arrow-counterclockwise"></i>
-                초기화
-              </button>
-            </div>
-
-            {/* Settings */}
-            <div className="bg-light p-2 rounded-3" style={{ fontSize: '0.75rem' }}>
-              <div className="row g-2 align-items-center">
-                <div className="col-6">
-                  <label className="text-muted fw-medium mb-1 d-block">집중 시간 (분)</label>
-                  <input 
-                    type="number" 
-                    value={pomodoroCustomFocus} 
-                    onChange={(e) => {
-                      const val = Math.max(1, parseInt(e.target.value) || 25);
-                      setPomodoroCustomFocus(val);
-                      if (pomodoroMode === 'focus' && !pomodoroIsRunning) {
-                        setPomodoroSeconds(val * 60);
-                      }
-                    }}
-                    className="form-control form-control-sm text-center border-0 bg-white"
-                    min="1"
-                  />
-                </div>
-                <div className="col-6">
-                  <label className="text-muted fw-medium mb-1 d-block">휴식 시간 (분)</label>
-                  <input 
-                    type="number" 
-                    value={pomodoroCustomBreak} 
-                    onChange={(e) => {
-                      const val = Math.max(1, parseInt(e.target.value) || 5);
-                      setPomodoroCustomBreak(val);
-                      if (pomodoroMode === 'break' && !pomodoroIsRunning) {
-                        setPomodoroSeconds(val * 60);
-                      }
-                    }}
-                    className="form-control form-control-sm text-center border-0 bg-white"
-                    min="1"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* 삭제 확인 모달 (Glassmorphic) */}
-      {deleteConfirmTarget && (
-        <div 
-          className="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center px-3"
-          style={{
-            zIndex: 10000,
-            backgroundColor: deleteConfirmTarget.type === 'memo' ? 'rgba(15, 23, 42, 0.85)' : 'rgba(15, 23, 42, 0.65)',
-            backdropFilter: 'blur(16px)',
-            transition: 'all 0.3s ease-in-out'
-          }}
-          onClick={() => setDeleteConfirmTarget(null)}
-        >
-          {deleteConfirmTarget.type === 'memo' ? (
-            /* 메모 삭제용 풀스크린 글래스모피즘 컨펌 보드 */
-            <div 
-              className="w-100 h-100 d-flex flex-column align-items-center justify-content-center scale-in text-white p-4"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {/* 3D 느낌의 크고 화려한 경고 비주얼 */}
-              <div 
-                className="mb-4 d-flex align-items-center justify-content-center rounded-circle"
-                style={{
-                  width: '120px',
-                  height: '120px',
-                  background: 'radial-gradient(circle, #ff8787 0%, #fa5252 100%)',
-                  boxShadow: '0 15px 35px rgba(250, 82, 82, 0.4), inset 0 -8px 0px rgba(0,0,0,0.15)',
-                  transform: 'perspective(500px) translateZ(20px)',
-                  animation: 'pulse 2s infinite'
-                }}
-              >
-                <i className="bi bi-trash-fill text-white" style={{ fontSize: '3.5rem' }}></i>
-              </div>
-
-              <h2 className="fw-bold mb-2 display-font text-white">메모를 삭제하시겠습니까?</h2>
-              <p className="text-white-50 text-center mb-5" style={{ maxWidth: '500px', fontSize: '1.1rem', lineHeight: '1.6' }}>
-                선택하신 메모는 복구할 수 없도록 완전히 삭제되며,<br />
-                데이터베이스에서 영구히 제거됩니다.
-              </p>
-
-              {/* 큼직한 가로 배치 취소/삭제 단추 */}
-              <div className="d-flex gap-3 justify-content-center w-100" style={{ maxWidth: '480px' }}>
-                <button
-                  onClick={() => setDeleteConfirmTarget(null)}
-                  className="btn btn-outline-light py-3.5 rounded-4 fw-bold flex-grow-1"
-                  style={{ fontSize: '1.1rem', backdropFilter: 'blur(5px)', border: '2px solid rgba(255,255,255,0.4)', borderRadius: '12px' }}
-                >
-                  아니오, 유지할래요
-                </button>
-                <button
-                  onClick={handleDeleteConfirm}
-                  className="btn btn-danger py-3.5 rounded-4 fw-bold flex-grow-1 shadow-lg"
-                  style={{
-                    fontSize: '1.1rem',
-                    backgroundColor: '#fa5252',
-                    border: 'none',
-                    boxShadow: '0 10px 25px rgba(250, 82, 82, 0.3)',
-                    borderRadius: '12px'
-                  }}
-                >
-                  네, 삭제합니다
-                </button>
-              </div>
-            </div>
-          ) : (
-            /* 일정 삭제용 컴팩트 모달 */
-            <div 
-              className="premium-card p-4 w-100 rounded-4 position-relative scale-in"
-              style={{
-                maxWidth: '400px',
-                backgroundColor: 'rgba(15, 18, 36, 0.95)',
-                color: '#e2e8f0',
-                border: '1px solid rgba(244, 63, 94, 0.25)',
-                borderTop: '6px solid #f43f5e',
-                boxShadow: '0 0 25px rgba(244, 63, 94, 0.25), 0 20px 50px rgba(0, 0, 0, 0.65)'
-              }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              {/* Header Icon */}
-              <div className="text-center mb-3">
-                <div className="rounded-circle d-inline-flex align-items-center justify-content-center p-3 mb-2 shadow-sm" style={{ width: '56px', height: '56px', backgroundColor: 'rgba(244, 63, 94, 0.15)', color: '#fb7185' }}>
-                  <i className="bi bi-exclamation-triangle-fill fs-3"></i>
-                </div>
-                <h5 className="fw-bold mb-1 text-white">삭제 확인</h5>
-              </div>
-
-              {/* Body Text */}
-              <div className="text-center py-2 mb-4 text-secondary" style={{ fontSize: '0.95rem', lineHeight: '1.5' }}>
-                삭제하시겠습니까?<br />
-                <small className="text-secondary" style={{ fontSize: '0.8rem', opacity: 0.6 }}>(이 작업은 되돌릴 수 없습니다.)</small>
-              </div>
-
-              {/* Footer Buttons */}
-              <div className="d-flex gap-2">
-                <button
-                  onClick={() => setDeleteConfirmTarget(null)}
-                  className="btn w-100 py-2.5 rounded-3 fw-semibold border-0"
-                  style={{ fontSize: '0.9rem', backgroundColor: 'rgba(255, 255, 255, 0.05)', color: '#94a3b8', border: '1px solid rgba(255,255,255,0.08)' }}
-                >
-                  취소
-                </button>
-                <button
-                  onClick={handleDeleteConfirm}
-                  className="btn w-100 py-2.5 rounded-3 fw-semibold border-0 text-white"
-                  style={{ fontSize: '0.9rem', background: 'linear-gradient(135deg, #f43f5e, #e11d48)', boxShadow: '0 0 10px rgba(244, 63, 94, 0.4)' }}
-                >
-                  삭제
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
+      <DeleteConfirmModal
+        open={!!deleteConfirmTarget}
+        type={deleteConfirmTarget?.type ?? null}
+        onCancel={() => setDeleteConfirmTarget(null)}
+        onConfirm={handleDeleteConfirm}
+      />
 
       <ScheduleModalView
         open={isScheduleModalOpen}
@@ -2284,24 +1908,7 @@ ${memo.content}`;
         </div>
       )}
 
-      {/* Floating Toast Notification */}
-      {toastMessage && (
-        <div 
-          className="position-fixed bottom-4 start-50 translate-middle-x px-4 py-3 rounded-pill shadow-lg d-flex align-items-center gap-2 border text-white animate-fade-in"
-          style={{
-            zIndex: 10000,
-            backgroundColor: 'rgba(15, 23, 42, 0.9)',
-            backdropFilter: 'blur(10px)',
-            borderColor: 'rgba(255, 255, 255, 0.15)',
-            fontSize: '0.9rem',
-            boxShadow: '0 10px 30px rgba(0, 0, 0, 0.3)',
-            bottom: '30px'
-          }}
-        >
-          <i className="bi bi-check-circle-fill text-success fs-5"></i>
-          <span className="fw-medium">{toastMessage}</span>
-        </div>
-      )}
+      <ToastMessage message={toastMessage} />
 
       {/* Elegant Footer */}
       <footer 
