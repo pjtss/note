@@ -121,18 +121,18 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
 
     // 7. 수평선 (---)
     const hrColor = isDarkColor ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.08)';
-    html = html.replace(/^---$/gm, `<hr style="border: none; border-top: 1px solid ${hrColor}; margin: 1.5rem 0;" />`);
+    html = html.replace(/^---$/gm, `<hr style="border: none; border-top: 1px solid ${hrColor}; margin: 0;" />`);
 
     // 8. 인용구 (&gt; quote)
     const quoteBorder = isDarkColor ? 'rgba(255,255,255,0.5)' : 'rgba(0, 0, 0, 0.2)';
     const quoteBg = isDarkColor ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.02)';
-    html = html.replace(/^&gt;\s+(.+)$/gm, `<blockquote class="ps-3 py-1.5 my-2.5 text-muted font-italic rounded-end" style="border-left: 4px solid ${quoteBorder} !important; background-color: ${quoteBg}; opacity: 0.9;">$1</blockquote>`);
+    html = html.replace(/^&gt;\s+(.+)$/gm, `<blockquote class="text-muted font-italic rounded-end" style="margin: 0; padding: 0 0 0 0.75rem; border-left: 4px solid ${quoteBorder} !important; background-color: ${quoteBg}; opacity: 0.9;">$1</blockquote>`);
 
     // 9. 제목 헤더 처리 (### H3, ## H2, # H1)
     const borderUnder = isDarkColor ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.08)';
-    html = html.replace(/^###\s+(.+)$/gm, `<h6 class="fw-bold mt-2 mb-1 display-font text-start" style="font-size: 1.05rem; letter-spacing: -0.2px; line-height: 1.3;">$1</h6>`);
-    html = html.replace(/^##\s+(.+)$/gm, `<h5 class="fw-bold mt-2 mb-1 border-bottom pb-1 text-start display-font" style="font-size: 1.2rem; border-color: ${borderUnder} !important; letter-spacing: -0.3px; line-height: 1.3;">$1</h5>`);
-    html = html.replace(/^#\s+(.+)$/gm, `<h4 class="fw-bold mt-2 mb-2 border-bottom pb-1 text-start display-font" style="font-size: 1.4rem; border-color: ${borderUnder} !important; letter-spacing: -0.4px; line-height: 1.25;">$1</h4>`);
+    html = html.replace(/^###\s+(.+)$/gm, `<h6 class="fw-bold display-font text-start" style="margin: 0; padding: 0; font-size: 1.05rem; letter-spacing: -0.2px; line-height: 1.15;">$1</h6>`);
+    html = html.replace(/^##\s+(.+)$/gm, `<h5 class="fw-bold border-bottom text-start display-font" style="margin: 0; padding: 0; font-size: 1.2rem; border-color: ${borderUnder} !important; letter-spacing: -0.3px; line-height: 1.15;">$1</h5>`);
+    html = html.replace(/^#\s+(.+)$/gm, `<h4 class="fw-bold border-bottom text-start display-font" style="margin: 0; padding: 0; font-size: 1.4rem; border-color: ${borderUnder} !important; letter-spacing: -0.4px; line-height: 1.1;">$1</h4>`);
 
     // 10. 리스트(ul/li, ol/li) 파싱
     const lines = html.split('\n');
@@ -143,6 +143,9 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
       const trimmed = line.trim();
+      const leadingWhitespace = (line.match(/^[\t ]+/)?.[0] || '')
+        .replace(/\t/g, '&nbsp;&nbsp;&nbsp;&nbsp;')
+        .replace(/ /g, '&nbsp;');
       const todoMatch = trimmed.match(/^[-*]\s+\[( |x)\]\s+(.+)$/i);
       const ulMatch = trimmed.match(/^[-*]\s+(.+)$/);
       const olMatch = trimmed.match(/^(\d+)\.\s+(.+)$/);
@@ -153,7 +156,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
           inOl = false;
         }
         if (!inUl) {
-          processedLines.push('<ul class="my-1 text-start list-unstyled" style="padding-left: 0;">');
+          processedLines.push(`<ul class="m-0 text-start list-unstyled" style="margin:0;padding-left:0;">`);
           inUl = true;
         }
         const isChecked = todoMatch[1].toLowerCase() === 'x';
@@ -162,27 +165,27 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
           : `<i class="bi bi-square text-muted me-2 cursor-pointer todo-toggle" data-line-index="${i}" style="font-size: 1.05rem; vertical-align: middle;"></i>`;
         
         const textStyle = isChecked ? 'text-decoration: line-through; opacity: 0.6;' : '';
-        processedLines.push(`<li class="small my-0 py-0 d-flex align-items-center" style="line-height: 1.45; ${textStyle}">${checkboxHtml}<span>${todoMatch[2]}</span></li>`);
+        processedLines.push(`<li class="small my-0 py-0 d-flex align-items-center" style="margin:0;padding:0;line-height: 1.2; ${textStyle}">${leadingWhitespace}${checkboxHtml}<span>${todoMatch[2]}</span></li>`);
       } else if (ulMatch) {
         if (inOl) {
           processedLines.push('</ol>');
           inOl = false;
         }
         if (!inUl) {
-          processedLines.push('<ul class="my-1 text-start" style="padding-left: 1.1rem; list-style-type: disc;">');
+          processedLines.push('<ul class="m-0 text-start" style="margin:0;padding-left:0;list-style:none;">');
           inUl = true;
         }
-        processedLines.push(`<li class="small my-0 py-0" style="line-height: 1.45;">${ulMatch[1]}</li>`);
+        processedLines.push(`<li class="small my-0 py-0" style="margin:0;padding:0;line-height: 1.2;">${leadingWhitespace}${ulMatch[1]}</li>`);
       } else if (olMatch) {
         if (inUl) {
           processedLines.push('</ul>');
           inUl = false;
         }
         if (!inOl) {
-          processedLines.push('<ol class="my-1 text-start" style="padding-left: 1.1rem;">');
+          processedLines.push('<ol class="m-0 text-start" style="margin:0;padding-left:0;list-style:none;">');
           inOl = true;
         }
-        processedLines.push(`<li class="small my-0 py-0" style="line-height: 1.45;">${olMatch[2]}</li>`);
+        processedLines.push(`<li class="small my-0 py-0" style="margin:0;padding:0;line-height: 1.2;">${leadingWhitespace}${olMatch[2]}</li>`);
       } else {
         if (inUl) {
           processedLines.push('</ul>');
@@ -192,7 +195,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
           processedLines.push('</ol>');
           inOl = false;
         }
-        processedLines.push(line);
+        processedLines.push(leadingWhitespace ? `${leadingWhitespace}${trimmed}` : trimmed);
       }
     }
 
@@ -208,7 +211,6 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
     html = html.replace(/<\/li><br \/>/g, '</li>');
     html = html.replace(/<\/ul><br \/>/g, '</ul>');
     html = html.replace(/<\/ol><br \/>/g, '</ol>');
-
     return html;
   };
 
@@ -267,54 +269,95 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
         return (
           <div 
             key={index} 
-            className="my-3 overflow-hidden rounded-4 border text-start"
+              className="my-0 overflow-hidden text-start position-relative"
             style={{
-              borderColor: isDarkColor ? 'rgba(255,255,255,0.18)' : 'rgba(0, 0, 0, 0.08)',
-              boxShadow: '0 12px 28px rgba(0, 0, 0, 0.25)',
-              background: '#1e1e2e', // 더욱 깊고 세련된 테마 (Catppuccin Mocha 배경)
-              fontFamily: 'system-ui, -apple-system, sans-serif'
+              borderRadius: '18px',
+              border: '1px solid rgba(148, 163, 184, 0.18)',
+              boxShadow: isDarkColor
+                ? '0 26px 70px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255,255,255,0.04)'
+                : '0 20px 50px rgba(15, 23, 42, 0.16), inset 0 1px 0 rgba(255,255,255,0.65)',
+              background: isDarkColor
+                ? 'linear-gradient(180deg, rgba(15, 23, 42, 0.98) 0%, rgba(2, 6, 23, 0.98) 100%)'
+                : 'linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(248,250,252,0.98) 100%)',
+              fontFamily: 'var(--font-family-body)'
             }}
           >
-            {/* Mac style OS Window Header */}
-            <div 
-              className="d-flex align-items-center justify-content-between px-3 py-2.5"
+            <div
               style={{
-                background: 'rgba(255, 255, 255, 0.02)',
-                borderBottom: '1px solid rgba(255, 255, 255, 0.05)'
+                position: 'absolute',
+                inset: 0,
+                pointerEvents: 'none',
+                background: isDarkColor
+                  ? 'radial-gradient(circle at top right, rgba(56, 189, 248, 0.15), transparent 42%), radial-gradient(circle at bottom left, rgba(168, 85, 247, 0.12), transparent 36%)'
+                  : 'radial-gradient(circle at top right, rgba(14, 165, 233, 0.10), transparent 40%), radial-gradient(circle at bottom left, rgba(99, 102, 241, 0.08), transparent 36%)'
+              }}
+            />
+
+            {/* Editor Header */}
+            <div 
+              className="d-flex align-items-center justify-content-between px-3 py-0"
+              style={{
+                position: 'relative',
+                zIndex: 1,
+                background: isDarkColor
+                  ? 'linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02))'
+                  : 'linear-gradient(180deg, rgba(255,255,255,0.72), rgba(255,255,255,0.45))',
+                borderBottom: isDarkColor
+                  ? '1px solid rgba(148, 163, 184, 0.14)'
+                  : '1px solid rgba(148, 163, 184, 0.16)',
+                backdropFilter: 'blur(16px)'
               }}
             >
               <div className="d-flex align-items-center gap-2">
-                <span className="rounded-circle" style={{ width: '12px', height: '12px', backgroundColor: '#ff5f56', display: 'inline-block' }}></span>
-                <span className="rounded-circle" style={{ width: '12px', height: '12px', backgroundColor: '#ffbd2e', display: 'inline-block' }}></span>
-                <span className="rounded-circle" style={{ width: '12px', height: '12px', backgroundColor: '#27c93f', display: 'inline-block' }}></span>
+                <div className="d-flex align-items-center gap-1.5">
+                  <span className="rounded-circle" style={{ width: '10px', height: '10px', backgroundColor: '#ff5f56', display: 'inline-block', boxShadow: '0 0 0 1px rgba(255,255,255,0.08) inset' }}></span>
+                  <span className="rounded-circle" style={{ width: '10px', height: '10px', backgroundColor: '#ffbd2e', display: 'inline-block', boxShadow: '0 0 0 1px rgba(255,255,255,0.08) inset' }}></span>
+                  <span className="rounded-circle" style={{ width: '10px', height: '10px', backgroundColor: '#27c93f', display: 'inline-block', boxShadow: '0 0 0 1px rgba(255,255,255,0.08) inset' }}></span>
+                </div>
+                <span
+                  className="px-2 py-1 rounded-pill small fw-semibold"
+                  style={{
+                    color: isDarkColor ? '#cbd5e1' : '#475569',
+                    backgroundColor: isDarkColor ? 'rgba(255,255,255,0.06)' : 'rgba(148,163,184,0.12)',
+                    letterSpacing: '0.08em',
+                    textTransform: 'uppercase',
+                    fontSize: '0.66rem'
+                  }}
+                >
+                  {language}
+                </span>
               </div>
-              
-              <span 
-                className="text-uppercase small fw-bold tracking-wider font-monospace" 
+
+              <span
+                className="small fw-semibold"
                 style={{ 
-                  color: 'rgba(255, 255, 255, 0.4)', 
-                  fontSize: '0.7rem',
-                  letterSpacing: '1.2px'
+                  color: isDarkColor ? '#94a3b8' : '#64748b',
+                  letterSpacing: '0.06em'
                 }}
               >
-                {language}
+                코드 블록
               </span>
  
               <button
                 onClick={() => handleCopyCode(codeText, blockId)}
-                className="btn btn-sm py-1 px-2.5 rounded-3 transition-all d-flex align-items-center gap-1.5 border-0"
+                className="btn btn-sm py-2 px-3 rounded-pill transition-all d-flex align-items-center gap-2 border-0"
                 style={{
-                  backgroundColor: isCopied ? '#27c93f' : 'rgba(255, 255, 255, 0.06)',
-                  color: '#fff',
-                  fontSize: '0.7rem',
-                  fontWeight: 600,
-                  transition: 'all 0.15s ease'
+                  backgroundColor: isCopied
+                    ? 'rgba(34, 197, 94, 0.18)'
+                    : isDarkColor
+                      ? 'rgba(255,255,255,0.06)'
+                      : 'rgba(148,163,184,0.14)',
+                  color: isCopied ? '#22c55e' : (isDarkColor ? '#e2e8f0' : '#0f172a'),
+                  fontSize: '0.75rem',
+                  fontWeight: 700,
+                  letterSpacing: '0.02em',
+                  boxShadow: isCopied ? '0 0 0 1px rgba(34,197,94,0.35) inset' : 'none'
                 }}
               >
                 {isCopied ? (
                   <>
                     <i className="bi bi-check-lg"></i>
-                    <span>Copied!</span>
+                    <span>Copied</span>
                   </>
                 ) : (
                   <>
@@ -327,32 +370,36 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
  
             {/* VS Code/Carbon 스타일 줄 번호 및 하이라이트 레이아웃 */}
             <div 
-              className="p-3 overflow-x-auto" 
+              className="p-0 overflow-x-auto" 
               style={{ 
-                maxHeight: '380px',
-                background: '#1e1e2e'
+                maxHeight: '420px',
+                position: 'relative',
+                zIndex: 1
               }}
             >
-              <div className="d-flex font-monospace" style={{ fontSize: '0.85rem' }}>
+              <div className="d-flex font-monospace" style={{ fontSize: '0.9rem' }}>
                 {/* Line Numbers Column */}
                 <div 
-                  className="text-end pe-3 select-none text-muted" 
+                  className="text-end pe-3 select-none" 
                   style={{ 
-                    borderRight: '1px solid rgba(255,255,255,0.06)',
-                    minWidth: '2.2rem',
-                    opacity: 0.35
+                    borderRight: isDarkColor ? '1px solid rgba(148,163,184,0.12)' : '1px solid rgba(148,163,184,0.14)',
+                    minWidth: '3rem',
+                    paddingTop: '0',
+                    paddingBottom: '0',
+                    color: isDarkColor ? 'rgba(148,163,184,0.72)' : 'rgba(71,85,105,0.72)',
+                    background: isDarkColor ? 'rgba(2,6,23,0.34)' : 'rgba(248,250,252,0.65)'
                   }}
                 >
                   {lines.map((_, i) => (
-                    <div key={i} style={{ lineHeight: '1.6' }}>{i + 1}</div>
+                    <div key={i} style={{ lineHeight: '1.75', fontSize: '0.78rem' }}>{i + 1}</div>
                   ))}
                 </div>
                 {/* Code Column */}
-                <div className="ps-3 flex-grow-1 text-start" style={{ color: '#cdd6f4' }}>
+                <div className="ps-3 pe-3 flex-grow-1 text-start" style={{ color: isDarkColor ? '#e2e8f0' : '#0f172a', paddingTop: '0', paddingBottom: '0' }}>
                   {lines.map((line, i) => (
                     <div 
                       key={i} 
-                      style={{ lineHeight: '1.6', whiteSpace: 'pre' }}
+                      style={{ lineHeight: '1.4', whiteSpace: 'pre', fontSize: '0.9rem' }}
                       dangerouslySetInnerHTML={{ __html: line || ' ' }}
                     />
                   ))}

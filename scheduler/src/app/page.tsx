@@ -1153,15 +1153,14 @@ ${memo.content}`;
         }
       `}} />
       {/* Premium Glass Header Navigation */}
-      <nav className="navbar navbar-expand-lg glass-nav py-3 sticky-top">
+      <nav className="navbar navbar-expand-lg glass-nav py-2 sticky-top">
         <div className="container">
           <div className="d-flex align-items-center">
-            <div className="rounded-3 p-1.5 me-3 d-flex align-items-center justify-content-center" style={{ width: '40px', height: '40px', background: 'rgba(255, 255, 255, 0.08)', border: '1px solid rgba(236, 72, 153, 0.3)', boxShadow: '0 0 12px var(--neon-pink)' }}>
+            <div className="rounded-3 p-1 me-2 d-flex align-items-center justify-content-center" style={{ width: '34px', height: '34px', background: 'rgba(255, 255, 255, 0.08)', border: '1px solid rgba(236, 72, 153, 0.3)', boxShadow: '0 0 12px var(--neon-pink)' }}>
               <img src="/logo.png" alt="Simple Note Logo" style={{ width: '100%', height: '100%', objectFit: 'contain', borderRadius: '4px' }} />
             </div>
             <div>
-              <span className="navbar-brand mb-0 h4 fw-bold display-font neon-text-pink" style={{ letterSpacing: '0.5px' }}>Antigravity Note</span>
-              <small className="d-block text-secondary" style={{ fontSize: '0.7rem', marginTop: '-4px', opacity: 0.8, letterSpacing: '0.5px' }}>TECHNICAL PORTAL</small>
+              <span className="navbar-brand mb-0 h5 fw-bold display-font neon-text-pink" style={{ letterSpacing: '0.2px' }}>Simple Note</span>
             </div>
           </div>
 
@@ -1277,8 +1276,8 @@ ${memo.content}`;
                   <div className="rounded-circle d-inline-flex align-items-center justify-content-center p-2 mb-3 shadow-sm" style={{ width: '56px', height: '56px', background: 'rgba(255, 255, 255, 0.08)', border: '1px solid rgba(99, 102, 241, 0.3)', boxShadow: '0 0 15px rgba(99, 102, 241, 0.3)' }}>
                     <img src="/logo.png" alt="Simple Note Logo" style={{ width: '100%', height: '100%', objectFit: 'contain', borderRadius: '50%' }} />
                   </div>
-                  <h4 className="fw-bold mb-1 display-font text-white">Antigravity Portal</h4>
-                  <p className="text-secondary small">프리미엄 일정 & 메모패드 연동 계정 인증</p>
+                  <h4 className="fw-bold mb-1 display-font text-white">Simple Note</h4>
+                  <p className="text-secondary small">일정과 메모를 한 화면에서 바로 관리합니다.</p>
                 </div>
 
                 {authError && (
@@ -1515,27 +1514,25 @@ ${memo.content}`;
                   </div>
                 </div>
 
-                <div className="row g-4">
-                  {/* Left Column - Actions Control */}
-                  <div className="col-lg-3">
-                    <div className="sticky-lg-top" style={{ top: '96px', zIndex: 10 }}>
-                      <button
-                        onClick={() => {
-                          handleCancelEdit();
-                          setIsScheduleModalOpen(true);
-                        }}
-                        className="btn btn-premium-primary w-100 py-3 rounded-4 fw-bold shadow-sm d-flex align-items-center justify-content-center gap-2 transition-all"
-                        style={{ fontSize: '1rem' }}
-                      >
-                        <i className="bi bi-calendar-plus-fill fs-5"></i>
-                        <span>새 일정 계획하기</span>
-                      </button>
+                <div className="premium-card p-4">
+                  <div className="d-flex align-items-center justify-content-between flex-wrap gap-3 mb-3">
+                    <div>
+                      <h5 className="fw-bold mb-1">일정 보드</h5>
+                      <p className="small text-secondary mb-0">필터와 목록만 남겨 화면을 넓게 사용합니다.</p>
                     </div>
+                    <button
+                      onClick={() => {
+                        handleCancelEdit();
+                        setIsScheduleModalOpen(true);
+                      }}
+                      className="btn btn-premium-primary d-flex align-items-center justify-content-center gap-2 transition-all"
+                      style={{ borderRadius: '12px', minWidth: '160px' }}
+                    >
+                      <i className="bi bi-calendar-plus-fill fs-5"></i>
+                      <span>새 일정 계획하기</span>
+                    </button>
                   </div>
 
-                  {/* Right Column - Schedule Board & Lists */}
-                  <div className="col-lg-9">
-                    <div className="premium-card p-4">
                       {/* Filters Header Bar */}
                       {/* 9. 카테고리별 컬러 칩 및 원클릭 퀵 필터 */}
                       <div className="d-flex flex-wrap gap-2 mb-3 align-items-center">
@@ -1638,10 +1635,10 @@ ${memo.content}`;
                             <i className="bi bi-calendar-x text-secondary fs-3"></i>
                           </div>
                           <h6 className="fw-bold text-secondary mb-1">등록된 일정이 없습니다.</h6>
-                          <p className="text-secondary small px-4 mb-0" style={{ opacity: 0.7 }}>
+                      <p className="text-secondary small px-4 mb-0" style={{ opacity: 0.7 }}>
                             {searchQuery.trim() !== '' || categoryFilter !== 'All' || completionFilter !== 'All' 
                               ? '설정한 필터 조건에 부합하는 일정이 없습니다. 필터를 해제해보세요.' 
-                              : '왼쪽 폼을 활용하여 개인 일정을 새롭게 계획하고 관리해보세요.'}
+                              : '상단 버튼으로 새 일정을 등록해보세요.'}
                           </p>
                         </div>
                       ) : (
@@ -1812,34 +1809,31 @@ ${memo.content}`;
                         </div>
                       )}
                     </div>
-                  </div>
-                </div>
               </>
             )}
 
             {/* 2. 메모패드 (Memo Tab) */}
             {activeTab === 'memo' && (
-              <div className="row g-4">
-                  {/* Left Column - Actions Control */}
-                  <div className="col-lg-3">
-                    <div className="sticky-lg-top" style={{ top: '96px', zIndex: 10 }}>
-                      <button
-                        onClick={() => {
-                          handleCancelMemoEdit();
-                          setIsMemoModalOpen(true);
-                        }}
-                        className="btn btn-premium-primary w-100 py-3 rounded-4 fw-bold shadow-sm d-flex align-items-center justify-content-center gap-2 transition-all"
-                        style={{ fontSize: '1rem' }}
-                      >
-                        <i className="bi bi-sticky-fill fs-5"></i>
-                        <span>새 메모 작성하기</span>
-                      </button>
-                    </div>
+              <div className="premium-card p-4">
+                <div className="d-flex align-items-center justify-content-between flex-wrap gap-3 mb-3">
+                  <div>
+                    <h5 className="fw-bold mb-1">메모 보드</h5>
+                    <p className="small text-secondary mb-0">필터와 목록만 남겨 화면을 넓게 사용합니다.</p>
                   </div>
+                  <button
+                    onClick={() => {
+                      handleCancelMemoEdit();
+                      setIsMemoModalOpen(true);
+                    }}
+                    className="btn btn-premium-primary d-flex align-items-center justify-content-center gap-2 transition-all"
+                    style={{ borderRadius: '12px', minWidth: '160px' }}
+                  >
+                    <i className="bi bi-sticky-fill fs-5"></i>
+                    <span>새 메모 작성하기</span>
+                  </button>
+                </div>
 
-                  {/* Right Column - Pinterest Style Memo board */}
-                  <div className="col-lg-9">
-                  <div className="premium-card p-4">
+                <div>
                     {/* Search and Color Filters Bar */}
                     <div className="row g-3 align-items-center mb-4">
                       <div className="col-md-5">
@@ -1903,7 +1897,7 @@ ${memo.content}`;
                         <p className="text-secondary small px-4 mb-0" style={{ opacity: 0.7 }}>
                           {memoSearchQuery.trim() !== '' || memoColorFilter !== 'All'
                             ? '설정한 필터 조건에 부합하는 메모가 없습니다. 필터를 변경해 보세요.'
-                            : '왼쪽 폼을 활용하여 아이디어 영감이나 업무 메모를 자유롭게 채워보세요.'}
+                            : '상단 버튼으로 새 메모를 작성해보세요.'}
                         </p>
                       </div>
                     ) : (
@@ -1999,7 +1993,6 @@ ${memo.content}`;
                         })}
                       </div>
                     )}
-                  </div>
                 </div>
               </div>
             )}
@@ -3225,8 +3218,8 @@ ${memo.content}`;
         }}
       >
         <div className="container text-center">
-          <p className="mb-1 fw-bold display-font" style={{ color: '#ffffff', background: 'var(--primary-gradient)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', display: 'inline-block' }}>Antigravity Note</p>
-          <p className="text-secondary small mb-0" style={{ opacity: 0.75 }}>Premium Planner & Elegant Memory Pad Service.</p>
+          <p className="mb-1 fw-bold display-font" style={{ color: '#ffffff', background: 'var(--primary-gradient)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', display: 'inline-block' }}>Simple Note</p>
+          <p className="text-secondary small mb-0" style={{ opacity: 0.75 }}>일정과 메모를 조용하게 정리하는 개인 작업공간.</p>
           <p className="text-secondary" style={{ fontSize: '0.7rem', marginTop: '4px', opacity: 0.5 }}>
             Built with Next.js App Router, Supabase, and Bootstrap 5.
           </p>
