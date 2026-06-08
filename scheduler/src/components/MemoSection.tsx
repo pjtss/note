@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import type { Memo } from '../types/memo';
 import { getSelectedFontCss, pastelColors, fontOptions, checkIfDarkColor, hexToRgba } from '../lib/editorUi';
 
@@ -22,6 +23,24 @@ type Props = {
 export function MemoSection(props: Props) {
   const pastel = props.pastelColorsOverride ?? pastelColors;
   const fonts = props.fontOptionsOverride ?? fontOptions;
+  const [hoveredMemoId, setHoveredMemoId] = useState<string | null>(null);
+
+  const getMemoPreview = (content: string) => {
+    const cleaned = content
+      .replace(/```[\s\S]*?```/g, ' ')
+      .replace(/^#{1,6}\s+/gm, '')
+      .replace(/^[-*]\s+\[( |x|X)\]\s+/gm, '')
+      .replace(/^[-*]\s+/gm, '')
+      .replace(/^\d+\.\s+/gm, '')
+      .replace(/>/g, '')
+      .replace(/`([^`]+)`/g, '$1')
+      .replace(/\*\*([\s\S]+?)\*\*/g, '$1')
+      .replace(/\*([\s\S]+?)\*/g, '$1')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    return cleaned.length > 110 ? `${cleaned.slice(0, 110).trim()}...` : cleaned;
+  };
 
   return (
     <div className="premium-card p-4">
@@ -91,8 +110,10 @@ export function MemoSection(props: Props) {
             return (
               <div key={memo.id} className="col-md-6 col-xl-6">
                 <div
+                  onMouseEnter={() => setHoveredMemoId(memo.id)}
+                  onMouseLeave={() => setHoveredMemoId((current) => (current === memo.id ? null : current))}
                   onClick={() => props.setSelectedMemo(memo)}
-                  className="card border-0 p-4 h-100 rounded-4 transition-all position-relative hover-up"
+                  className="card border-0 p-4 h-100 rounded-4 transition-all position-relative hover-up overflow-hidden"
                   style={{
                     backgroundColor: 'rgba(10, 10, 20, 0.8)',
                     color: '#e2e8f0',
@@ -114,6 +135,34 @@ export function MemoSection(props: Props) {
                     <div className="d-flex align-items-center justify-content-between border-top pt-2 mt-auto" style={{ borderColor: isDarkColor ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.06)', fontSize: '0.7rem', opacity: 0.75 }}>
                       <span className="d-flex align-items-center gap-1"><i className="bi bi-clock-history"></i>{props.formatDateKST(memo.createdAt, true)}</span>
                       <span className="fw-semibold">Memo Card</span>
+                    </div>
+                  </div>
+
+                  <div
+                    className="position-absolute start-0 end-0 bottom-0 px-4 pb-4 pt-5"
+                    style={{
+                      background: 'linear-gradient(180deg, rgba(10,10,20,0) 0%, rgba(10,10,20,0.92) 40%, rgba(10,10,20,0.98) 100%)',
+                      transform: hoveredMemoId === memo.id ? 'translateY(0)' : 'translateY(100%)',
+                      opacity: hoveredMemoId === memo.id ? 1 : 0,
+                      transition: 'transform 180ms ease, opacity 180ms ease',
+                      pointerEvents: 'none'
+                    }}
+                  >
+                    <div className="small text-secondary fw-semibold mb-2 d-flex align-items-center gap-1">
+                      <i className="bi bi-eye"></i>
+                      미리보기
+                    </div>
+                    <div
+                      className="rounded-3 px-3 py-2 small"
+                      style={{
+                        backgroundColor: 'rgba(255,255,255,0.06)',
+                        color: '#e2e8f0',
+                        lineHeight: 1.5,
+                        maxHeight: '4.5em',
+                        overflow: 'hidden'
+                      }}
+                    >
+                      {getMemoPreview(memo.content || '') || '내용이 비어 있습니다.'}
                     </div>
                   </div>
                 </div>
