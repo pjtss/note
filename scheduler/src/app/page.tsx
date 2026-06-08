@@ -9,6 +9,7 @@ import { useAuth } from '../hooks/useAuth';
 import { MarkdownRenderer } from '../components/MarkdownRenderer';
 import { ScheduleSection } from '../components/ScheduleSection';
 import { MemoSection } from '../components/MemoSection';
+import { ProfileSection } from '../components/ProfileSection';
 import { ScheduleModal as ScheduleModalView } from '../components/ScheduleModal';
 import { MemoModal as MemoModalView } from '../components/MemoModal';
 import {
@@ -1704,195 +1705,23 @@ ${memo.content}`;
 
             {/* 3. 마이페이지 (Profile Tab) */}
             {activeTab === 'profile' && (
-              <div className="row justify-content-center animate-fade-in">
-                <div className="col-lg-8 col-xl-7">
-                  <div 
-                    className="premium-card p-5 position-relative overflow-hidden rounded-4 text-start"
-                    style={{ 
-                      backgroundColor: 'rgba(15, 18, 36, 0.85)',
-                      border: '1px solid rgba(99, 102, 241, 0.25)',
-                      boxShadow: '0 0 30px rgba(99, 102, 241, 0.15), 0 15px 45px rgba(0, 0, 0, 0.65)'
-                    }}
-                  >
-                    {/* 상단 프로필 헤더 */}
-                    <div className="d-flex align-items-center justify-content-between mb-4 pb-3 border-bottom border-secondary" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
-                      <div className="d-flex align-items-center gap-3">
-                        <div 
-                          className="rounded-circle d-flex align-items-center justify-content-center"
-                          style={{
-                            width: '64px',
-                            height: '64px',
-                            background: 'var(--primary-gradient)',
-                            boxShadow: '0 0 15px var(--neon-pink)'
-                          }}
-                        >
-                          <i className="bi bi-person-bounding-box text-white fs-3"></i>
-                        </div>
-                        <div>
-                          <h4 className="fw-bold mb-1 text-white display-font">{user.displayName}</h4>
-                          <span className="text-secondary small d-flex align-items-center gap-1">
-                            {user.provider === 'google' && <i className="bi bi-google text-danger"></i>}
-                            {user.provider === 'kakao' && <i className="bi bi-chat-fill text-warning"></i>}
-                            {user.provider === 'naver' && <i className="bi bi-n-circle-fill text-success"></i>}
-                            {user.provider === 'local' && <i className="bi bi-person-circle text-primary"></i>}
-                            <span className="text-uppercase fw-semibold">{user.provider} Auth Portal</span>
-                          </span>
-                        </div>
-                      </div>
-                      
-                      <button
-                        onClick={signOutUser}
-                        className="btn btn-outline-danger rounded-pill px-4 py-2 fw-semibold"
-                        style={{ fontSize: '0.9rem', border: '1px solid rgba(239, 68, 68, 0.4)' }}
-                      >
-                        <i className="bi bi-box-arrow-right me-1"></i>로그아웃
-                      </button>
-                    </div>
-
-                    {/* 에러 및 성공 메시지 출력 */}
-                    {profileError && (
-                      <div className="alert alert-danger border-0 small rounded-3 d-flex align-items-center gap-2 mb-4 animate-fade-in" style={{ backgroundColor: 'rgba(239, 68, 68, 0.15)', color: '#f87171', border: '1px solid rgba(239, 68, 68, 0.2)' }} role="alert">
-                        <i className="bi bi-exclamation-triangle-fill fs-6"></i>
-                        <div>{profileError}</div>
-                      </div>
-                    )}
-                    {profileSuccess && (
-                      <div className="alert alert-success border-0 small rounded-3 d-flex align-items-center gap-2 mb-4 animate-fade-in" style={{ backgroundColor: 'rgba(16, 185, 129, 0.15)', color: '#34d399', border: '1px solid rgba(16, 185, 129, 0.2)' }} role="alert">
-                        <i className="bi bi-check-circle-fill fs-6"></i>
-                        <div>{profileSuccess}</div>
-                      </div>
-                    )}
-
-                    <form onSubmit={handleProfileSubmit}>
-                      {/* 닉네임 수정 필드 */}
-                      <div className="mb-4">
-                        <label htmlFor="profileDisplayName" className="form-label small fw-semibold text-secondary">이름 / 닉네임 변경 *</label>
-                        <input
-                          type="text"
-                          id="profileDisplayName"
-                          className="form-control form-premium-control text-white"
-                          value={profileDisplayName}
-                          onChange={(e) => setProfileDisplayName(e.target.value)}
-                          placeholder="새로운 닉네임을 입력하세요"
-                          required
-                        />
-                      </div>
-
-                      {/* 이메일 주소 정보 (읽기 전용) */}
-                      <div className="mb-4">
-                        <label className="form-label small fw-semibold text-secondary">계정 아이디 (이메일 주소)</label>
-                        <input
-                          type="text"
-                          className="form-control form-premium-control text-secondary bg-transparent"
-                          value={user.username}
-                          disabled
-                          style={{ opacity: 0.6 }}
-                        />
-                      </div>
-
-                      {/* 글로벌 푸시 알림 수신 설정 (네온 토글 스위치) */}
-                      <div className="mb-4 p-4 rounded-4 border" style={{ backgroundColor: 'rgba(255, 255, 255, 0.02)', borderColor: 'rgba(255, 255, 255, 0.05)' }}>
-                        <div className="d-flex align-items-center justify-content-between">
-                          <div>
-                            <h6 className="fw-bold text-white mb-1 d-flex align-items-center gap-2">
-                              <i className="bi bi-bell-fill text-info" style={{ filter: 'drop-shadow(0 0 5px var(--neon-cyan))' }}></i>
-                              글로벌 푸시 알림 수신 설정
-                            </h6>
-                            <small className="text-secondary" style={{ fontSize: '0.8rem', opacity: 0.7 }}>
-                              체크 해제 시 기기의 일정 시작 알림이 더 이상 전송되지 않습니다.
-                            </small>
-                          </div>
-                          <div className="form-check form-switch p-0 m-0">
-                            <input
-                              className="form-check-input cursor-pointer switch-neon-cyan"
-                              type="checkbox"
-                              id="profilePushEnabled"
-                              checked={user.pushEnabled}
-                              onChange={handleTogglePush}
-                              style={{ 
-                                width: '50px', 
-                                height: '26px',
-                                cursor: 'pointer',
-                                filter: user.pushEnabled ? 'drop-shadow(0 0 5px rgba(0, 240, 255, 0.5))' : 'none'
-                              }}
-                            />
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* 비밀번호 변경 필드 (Local 유저 한정 노출) */}
-                      {user.provider === 'local' && (
-                        <div className="p-4 rounded-4 mb-4 border" style={{ backgroundColor: 'rgba(255, 255, 255, 0.02)', borderColor: 'rgba(255, 255, 255, 0.05)' }}>
-                          <h6 className="fw-bold text-white mb-3 d-flex align-items-center gap-2">
-                            <i className="bi bi-shield-lock-fill text-warning"></i>
-                            비밀번호 변경하기
-                          </h6>
-                          <div className="row g-3">
-                            <div className="col-12">
-                              <label htmlFor="profileCurrentPassword" className="form-label small fw-semibold text-secondary">현재 비밀번호 *</label>
-                              <input
-                                type="password"
-                                id="profileCurrentPassword"
-                                className="form-control form-premium-control text-white"
-                                value={profileCurrentPassword}
-                                onChange={(e) => setProfileCurrentPassword(e.target.value)}
-                                placeholder="현재 비밀번호를 입력해 주세요"
-                              />
-                            </div>
-                            <div className="col-md-6">
-                              <label htmlFor="profileNewPassword" className="form-label small fw-semibold text-secondary">새 비밀번호</label>
-                              <input
-                                type="password"
-                                id="profileNewPassword"
-                                className="form-control form-premium-control text-white"
-                                value={profileNewPassword}
-                                onChange={(e) => setProfileNewPassword(e.target.value)}
-                                placeholder="최소 4자 이상"
-                              />
-                            </div>
-                            <div className="col-md-6">
-                              <label htmlFor="profileNewPasswordConfirm" className="form-label small fw-semibold text-secondary">새 비밀번호 확인</label>
-                              <input
-                                type="password"
-                                id="profileNewPasswordConfirm"
-                                className="form-control form-premium-control text-white"
-                                value={profileNewPasswordConfirm}
-                                onChange={(e) => setProfileNewPasswordConfirm(e.target.value)}
-                                placeholder="동일하게 입력"
-                              />
-                            </div>
-                          </div>
-                        </div>
-                      )}
-
-                      <button
-                        type="submit"
-                        className="btn btn-premium-primary w-100 py-3 rounded-pill fw-bold shadow-sm transition-all mt-2"
-                      >
-                        <i className="bi bi-check-circle-fill me-2"></i>변경 사항 저장하기
-                      </button>
-
-                      {/* 계정 탈퇴 액션 영역 (Danger Zone) */}
-                      <div className="mt-5 pt-3 border-top" style={{ borderColor: 'rgba(255, 255, 255, 0.08)' }}>
-                        <div className="d-flex align-items-center justify-content-between">
-                          <div>
-                            <span className="text-secondary small fw-semibold">위험 구역 (Danger Zone)</span>
-                            <p className="text-muted small mb-0" style={{ fontSize: '0.75rem', opacity: 0.6 }}>계정을 삭제하면 복구가 불가능하며, 일정 및 메모 등 모든 정보가 소멸됩니다.</p>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => setIsDeleteAccountModalOpen(true)}
-                            className="btn btn-sm btn-outline-danger px-3 py-2 rounded-3"
-                            style={{ fontSize: '0.8rem', border: '1px solid rgba(239, 68, 68, 0.3)' }}
-                          >
-                            계정 탈퇴하기
-                          </button>
-                        </div>
-                      </div>
-                    </form>
-                  </div>
-                </div>
-              </div>
+              <ProfileSection
+                user={user}
+                profileDisplayName={profileDisplayName}
+                setProfileDisplayName={setProfileDisplayName}
+                profileCurrentPassword={profileCurrentPassword}
+                setProfileCurrentPassword={setProfileCurrentPassword}
+                profileNewPassword={profileNewPassword}
+                setProfileNewPassword={setProfileNewPassword}
+                profileNewPasswordConfirm={profileNewPasswordConfirm}
+                setProfileNewPasswordConfirm={setProfileNewPasswordConfirm}
+                profileError={profileError}
+                profileSuccess={profileSuccess}
+                onSubmit={handleProfileSubmit}
+                onTogglePush={handleTogglePush}
+                onOpenDeleteAccount={() => setIsDeleteAccountModalOpen(true)}
+                onSignOut={signOutUser}
+              />
             )}
           </>
         )}
